@@ -6,7 +6,7 @@ use log::{debug, error, info, warn};
 use rmp_serde::{encode::write_named, from_slice};
 use std::{
     collections::HashMap,
-    fs::{remove_file, File},
+    fs::{remove_file, rename, File},
     io::{BufWriter, ErrorKind, Read, Write},
     os::unix::{
         io::AsRawFd,
@@ -48,13 +48,15 @@ pub struct Proxy {
 impl Proxy {
     pub fn initialize() -> Result<Self> {
         let lola = wait_for_lola().wrap_err("failed to connect to LoLA")?;
-        remove_file(HULA_SOCKET_PATH)
+        rename("/tmp/robocup", "/tmp/robocup_moved").wrap_err("Failed to yoink robocup file")?;
+        remove_file(LOLA_SOCKET_PATH)
             .or_else(|error| match error.kind() {
                 ErrorKind::NotFound => Ok(()),
                 _ => Err(error),
             })
             .wrap_err("passthrough failed to unlink existing HuLA socket file")?;
-        let hula_passthrough = UnixListener::bind(HULA_SOCKET_PATH)
+
+        let hula_passthrough = UnixListener::bind(LOLA_SOCKET_PATH)
             .wrap_err_with(|| format!("passthrough failed to bind {HULA_SOCKET_PATH}"))?;
 
         let epoll_fd =
@@ -172,7 +174,6 @@ fn register_connection(
     }
     add_to_epoll(poll_fd, connection_fd)
         .wrap_err("failed to register connection file descriptor")?;
-
     Ok(())
 }
 fn handle_connection_event(
@@ -205,6 +206,7 @@ fn handle_connection_event(
             notified_fd
         ),
     }
+    debug!("Finished handling hula event");
     Ok(())
 }
 fn add_to_epoll(
