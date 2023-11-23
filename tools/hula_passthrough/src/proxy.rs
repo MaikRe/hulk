@@ -20,7 +20,7 @@ const LOLA_SOCKET_RETRY_COUNT: usize = 60;
 const LOLA_SOCKET_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 const NO_EPOLL_TIMEOUT: i32 = -1;
 const MOVED_SOCKET_PATH: &str = "/tmp/robocup_moved";
-const BUFF_SIZE: usize = 5;
+const BUFF_SIZE: usize = 896;
 
 fn wait_for_lola() -> Result<UnixStream> {
     for _ in 0..LOLA_SOCKET_RETRY_COUNT {
@@ -78,7 +78,7 @@ impl Proxy {
         })
     }
     pub fn run(mut self) -> Result<()> {
-        let _proxy_start = Instant::now();
+        let proxy_start = Instant::now();
         let mut connections = HashMap::new();
         let mut events = [Event::new(Events::empty(), 0); 16];
         let mut writer = BufWriter::with_capacity(BUFF_SIZE, self.lola.try_clone()?);
@@ -92,7 +92,7 @@ impl Proxy {
                     handle_lola_event(
                         &mut self.lola,
                         &mut connections,
-                        _proxy_start,
+                        proxy_start,
                         &mut self.lola_file,
                     )?;
                 } else if notified_fd == self.hula_passthrough.as_raw_fd() {
@@ -106,6 +106,7 @@ impl Proxy {
                         &mut connections,
                         notified_fd,
                         &mut writer,
+                        proxy_start,
                         &mut self.hula_file,
                     )?;
                 }
@@ -120,15 +121,19 @@ struct Connection {
 fn handle_lola_event(
     lola: &mut UnixStream,
     connections: &mut HashMap<RawFd, Connection>,
-    _proxy_start: Instant,
+    proxy_start: Instant,
     lola_file: &mut File,
 ) -> Result<()> {
+    let since_start = format!("{:0>8}", proxy_start.elapsed().as_millis());
     let mut lola_data = [0; BUFF_SIZE];
     lola.read_exact(&mut lola_data)
         .wrap_err("failed to read from LoLA socket")?;
     lola_file
+        .write_all(&since_start.as_bytes())
+        .wrap_err("Could not write timestamp to lola file")?;
+    lola_file
         .write_all(&mut lola_data)
-        .wrap_err("Could not write to lola file")?;
+        .wrap_err("Could not write data to lola file")?;
     if connections.is_empty() {
         debug!("Finished handling lola event due to no connections");
         return Ok(());
@@ -177,6 +182,7 @@ fn handle_connection_event(
     connections: &mut HashMap<RawFd, Connection>,
     notified_fd: RawFd,
     writer: &mut BufWriter<UnixStream>,
+    proxy_start: Instant,
     hula_file: &mut File,
 ) -> Result<()> {
     match connections.get_mut(&notified_fd) {
@@ -192,9 +198,13 @@ fn handle_connection_event(
                 return Ok(());
             };
             write_named(writer, &read_buffer).wrap_err("failed to serialize control message")?;
+            let since_start = format!("{:0>8}", proxy_start.elapsed().as_millis());
+            hula_file
+                .write_all(&since_start.as_bytes())
+                .wrap_err("Could not write timestamp to hula file")?;
             hula_file
                 .write_all(&mut read_buffer)
-                .wrap_err("Could not write to hula file")?;
+                .wrap_err("Could not write data to hula file")?;
             connection.is_sending_control_frames = true;
         }
         None => warn!(
