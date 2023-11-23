@@ -1,9 +1,8 @@
 use chrono::Local;
 use color_eyre::eyre::{bail, Result, WrapErr};
 use epoll::{ControlOptions, Event, Events};
-use hula_types::RobotState;
 use log::{debug, error, info, warn};
-use rmp_serde::{encode::write_named, from_slice};
+use rmp_serde::encode::write_named;
 use std::{
     collections::HashMap,
     fs::{remove_file, rename, File},
@@ -20,7 +19,7 @@ const LOLA_SOCKET_PATH: &str = "/tmp/robocup";
 const LOLA_SOCKET_RETRY_COUNT: usize = 60;
 const LOLA_SOCKET_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 const NO_EPOLL_TIMEOUT: i32 = -1;
-const HULA_SOCKET_PATH: &str = "/tmp/robocuphula";
+const MOVED_SOCKET_PATH: &str = "/tmp/robocup_moved";
 const BUFF_SIZE: usize = 5;
 
 fn wait_for_lola() -> Result<UnixStream> {
@@ -48,7 +47,7 @@ pub struct Proxy {
 impl Proxy {
     pub fn initialize() -> Result<Self> {
         let lola = wait_for_lola().wrap_err("failed to connect to LoLA")?;
-        rename("/tmp/robocup", "/tmp/robocup_moved").wrap_err("Failed to yoink robocup file")?;
+        rename(LOLA_SOCKET_PATH, MOVED_SOCKET_PATH).wrap_err("Failed to yoink robocup file")?;
         remove_file(LOLA_SOCKET_PATH)
             .or_else(|error| match error.kind() {
                 ErrorKind::NotFound => Ok(()),
@@ -57,7 +56,7 @@ impl Proxy {
             .wrap_err("passthrough failed to unlink existing HuLA socket file")?;
 
         let hula_passthrough = UnixListener::bind(LOLA_SOCKET_PATH)
-            .wrap_err_with(|| format!("passthrough failed to bind {HULA_SOCKET_PATH}"))?;
+            .wrap_err_with(|| format!("passthrough failed to bind {LOLA_SOCKET_PATH}"))?;
 
         let epoll_fd =
             epoll::create(false).wrap_err("passthrough failed to create epoll file descriptor")?;
@@ -66,9 +65,9 @@ impl Proxy {
         add_to_epoll(epoll_fd, hula_passthrough.as_raw_fd())
             .wrap_err("passthrough failed to register hula file descriptor in epoll")?;
         let timestamp = Local::now().format("%Y_%m_%d_%H_%M_%S");
-        let mut lola_file = File::create(format!("lola_to_hula_passthrough.{}", timestamp))
+        let lola_file = File::create(format!("lola_to_hula_passthrough.{}", timestamp))
             .wrap_err("Failed to create log file of lola messages")?;
-        let mut hula_file = File::create(format!("hula_to_lola_passthrough.{}", timestamp))
+        let hula_file = File::create(format!("hula_to_lola_passthrough.{}", timestamp))
             .wrap_err("Failed to create log file of hula messages")?;
         Ok(Self {
             lola,
@@ -79,7 +78,7 @@ impl Proxy {
         })
     }
     pub fn run(mut self) -> Result<()> {
-        let proxy_start = Instant::now();
+        let _proxy_start = Instant::now();
         let mut connections = HashMap::new();
         let mut events = [Event::new(Events::empty(), 0); 16];
         let mut writer = BufWriter::with_capacity(BUFF_SIZE, self.lola.try_clone()?);
@@ -93,7 +92,7 @@ impl Proxy {
                     handle_lola_event(
                         &mut self.lola,
                         &mut connections,
-                        proxy_start,
+                        _proxy_start,
                         &mut self.lola_file,
                     )?;
                 } else if notified_fd == self.hula_passthrough.as_raw_fd() {
@@ -121,7 +120,7 @@ struct Connection {
 fn handle_lola_event(
     lola: &mut UnixStream,
     connections: &mut HashMap<RawFd, Connection>,
-    proxy_start: Instant,
+    _proxy_start: Instant,
     lola_file: &mut File,
 ) -> Result<()> {
     let mut lola_data = [0; BUFF_SIZE];
@@ -130,8 +129,6 @@ fn handle_lola_event(
     lola_file
         .write_all(&mut lola_data)
         .wrap_err("Could not write to lola file")?;
-    //debug!("{:?}", std::str::from_utf8(&lola_data));
-    //debug!("{}", robot_state.position.head_yaw);
     if connections.is_empty() {
         debug!("Finished handling lola event due to no connections");
         return Ok(());
@@ -198,7 +195,6 @@ fn handle_connection_event(
             hula_file
                 .write_all(&mut read_buffer)
                 .wrap_err("Could not write to hula file")?;
-            //debug!("{}", std::str::from_utf8(&read_buffer)?);
             connection.is_sending_control_frames = true;
         }
         None => warn!(
