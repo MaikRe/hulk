@@ -2,11 +2,10 @@ use chrono::Local;
 use color_eyre::eyre::{bail, Result, WrapErr};
 use epoll::{ControlOptions, Event, Events};
 use log::{debug, error, info, warn};
-use rmp_serde::encode::write_named;
 use std::{
     collections::HashMap,
     fs::{remove_file, rename, File},
-    io::{BufWriter, ErrorKind, Read, Write},
+    io::{ErrorKind, Read, Write},
     os::unix::{
         io::AsRawFd,
         net::{UnixListener, UnixStream},
@@ -81,7 +80,6 @@ impl Proxy {
         let proxy_start = Instant::now();
         let mut connections = HashMap::new();
         let mut events = [Event::new(Events::empty(), 0); 16];
-        let mut writer = BufWriter::with_capacity(BUFF_SIZE, self.lola.try_clone()?);
         debug!("Entering epoll loop...");
         loop {
             let number_of_events = epoll::wait(self.epoll_fd, NO_EPOLL_TIMEOUT, &mut events)
@@ -105,7 +103,7 @@ impl Proxy {
                     handle_connection_event(
                         &mut connections,
                         notified_fd,
-                        &mut writer,
+                        &mut self.lola,
                         proxy_start,
                         &mut self.hula_file,
                     )?;
@@ -181,7 +179,7 @@ fn register_connection(
 fn handle_connection_event(
     connections: &mut HashMap<RawFd, Connection>,
     notified_fd: RawFd,
-    writer: &mut BufWriter<UnixStream>,
+    lola: &mut UnixStream,
     proxy_start: Instant,
     hula_file: &mut File,
 ) -> Result<()> {
@@ -197,10 +195,11 @@ fn handle_connection_event(
                     .expect("connection file descriptor has to be registered");
                 return Ok(());
             };
-            write_named(writer, &read_buffer).wrap_err("failed to serialize control message")?;
+            lola.write_all(&mut read_buffer)
+                .wrap_err("Could not forward message from hula to lola")?;
             let since_start = format!("{:0>8}", proxy_start.elapsed().as_millis());
             hula_file
-                .write_all(&since_start.as_bytes())
+                .write_all(since_start.as_bytes())
                 .wrap_err("Could not write timestamp to hula file")?;
             hula_file
                 .write_all(&mut read_buffer)
