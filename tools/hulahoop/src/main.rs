@@ -7,7 +7,7 @@ use systemd::daemon::{notify, STATE_READY};
 mod proxy;
 #[derive(Parser, Debug)]
 #[clap(
-    name = "hula_passthrough",
+    name = "hulahoop",
     about = "Forwards messages between LoLA and HuLA and saves"
 )]
 struct Arguments {
