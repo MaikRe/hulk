@@ -80,11 +80,11 @@ pub struct Battery {
 #[repr(C)]
 pub struct InertialMeasurementUnit {
     #[serde(rename = "Accelerometer")]
-    accelerometer: Vertex3,
+    pub accelerometer: Vertex3,
     #[serde(rename = "Angles")]
-    angles: Vertex2,
+    pub angles: Vertex2,
     #[serde(rename = "Gyroscope")]
-    gyroscope: Vertex3,
+    pub gyroscope: Vertex3,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -212,14 +212,14 @@ impl JointsArray {
 #[derive(Debug, Default, Deserialize)]
 #[repr(C)]
 pub struct Vertex2 {
-    x: f32,
-    y: f32,
+    pub x: f32,
+    pub y: f32,
 }
 
 #[derive(Debug, Default, Deserialize)]
 #[repr(C)]
 pub struct Vertex3 {
-    x: f32,
-    y: f32,
-    z: f32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
 }
