@@ -20,6 +20,7 @@ const LOLA_SOCKET_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 const NO_EPOLL_TIMEOUT: i32 = -1;
 const MOVED_SOCKET_PATH: &str = "/tmp/robocup_moved";
 const BUFF_SIZE: usize = 896;
+const HULA_BUFF_SIZE: usize = 786;
 
 fn wait_for_lola() -> Result<UnixStream> {
     for _ in 0..LOLA_SOCKET_RETRY_COUNT {
@@ -185,7 +186,7 @@ fn handle_connection_event(
 ) -> Result<()> {
     match connections.get_mut(&notified_fd) {
         Some(connection) => {
-            let mut read_buffer = [0; BUFF_SIZE];
+            let mut read_buffer = [0; HULA_BUFF_SIZE];
             if let Err(error) = connection.socket.read_exact(&mut read_buffer) {
                 error!("Failed to read from connection: {}", error);
                 info!("Removing connection with file descriptor {}", notified_fd);
