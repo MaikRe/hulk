@@ -8,7 +8,7 @@ homepage = "https://github.com/hulks/hulk"
 [dependencies]
 env_logger = "0.10.0"
 clap = { version = "4.0.29", features = ["derive"] }
-log = "0.4.17"
-color-eyre = "0.6.2"
-hula-types = { path = "../hula/types/" }
+log = { workspace = true }
+color-eyre = { workspace = true }
+hula-types = { workspace = true }
 rmp-serde = "1.1.1"

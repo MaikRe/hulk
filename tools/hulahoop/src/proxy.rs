@@ -115,7 +115,6 @@ impl Proxy {
 }
 struct Connection {
     socket: UnixStream,
-    is_sending_control_frames: bool,
 }
 fn handle_lola_event(
     lola: &mut UnixStream,
@@ -123,15 +122,15 @@ fn handle_lola_event(
     proxy_start: Instant,
     lola_file: &mut File,
 ) -> Result<()> {
-    let since_start = format!("{:0>8}", proxy_start.elapsed().as_millis());
+    let since_start = proxy_start.elapsed().as_millis();
     let mut lola_data = [0; BUFF_SIZE];
     lola.read_exact(&mut lola_data)
         .wrap_err("failed to read from LoLA socket")?;
     lola_file
-        .write_all(&since_start.as_bytes())
+        .write_all(&(since_start.to_be_bytes()))
         .wrap_err("Could not write timestamp to lola file")?;
     lola_file
-        .write_all(&mut lola_data)
+        .write_all(&lola_data)
         .wrap_err("Could not write data to lola file")?;
     if connections.is_empty() {
         debug!("Finished handling lola event due to no connections");
@@ -166,7 +165,6 @@ fn register_connection(
             connection_fd,
             Connection {
                 socket: connection_stream,
-                is_sending_control_frames: false,
             },
         )
         .is_some()
@@ -196,16 +194,15 @@ fn handle_connection_event(
                     .expect("connection file descriptor has to be registered");
                 return Ok(());
             };
-            lola.write_all(&mut read_buffer)
+            lola.write_all(&read_buffer)
                 .wrap_err("Could not forward message from hula to lola")?;
-            let since_start = format!("{:0>8}", proxy_start.elapsed().as_millis());
+            let since_start = proxy_start.elapsed().as_millis();
             hula_file
-                .write_all(since_start.as_bytes())
+                .write_all(&(since_start.to_be_bytes()))
                 .wrap_err("Could not write timestamp to hula file")?;
             hula_file
-                .write_all(&mut read_buffer)
+                .write_all(&read_buffer)
                 .wrap_err("Could not write data to hula file")?;
-            connection.is_sending_control_frames = true;
         }
         None => warn!(
             "Connection with file descriptor {} does not exist",

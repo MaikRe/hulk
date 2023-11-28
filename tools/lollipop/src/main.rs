@@ -1,14 +1,11 @@
 use clap::Parser;
 use color_eyre::eyre::{Result, WrapErr};
-use hula_types::{Battery, HulaControlFrame, InertialMeasurementUnit, RobotState};
-use log::{debug, info, LevelFilter};
+use hula_types::RobotState;
+use log::{info, LevelFilter};
 use rmp_serde::from_slice;
-use std::{
-    fs::File,
-    io::{Read, Write},
-};
+use std::{fs::File, io::Read};
 const LOLA_BUFF_SIZE: usize = 896;
-const HULA_BUFF_SIZE: usize = 786;
+//const HULA_BUFF_SIZE: usize = 786;
 #[derive(Parser, Debug)]
 #[clap(
     name = "lollipop",
@@ -31,17 +28,20 @@ fn main() -> Result<()> {
             },
         )
         .init();
-    let mut file = File::open("/home/maik/TUHH/lola_to_hula_passthrough.2023_11_24_14_06_59")
+    let mut file = File::open("/home/maik/lola_to_hula_passthrough.2023_11_28_12_33_32")
         .wrap_err("Failed to open file")?;
-    let mut csv_file = File::create("headyaw.csv").wrap_err("Could not create csv file")?;
-    csv_file.write_all(b"timestamp,headyaw\n")?;
+    //let csv_file = File::create("kneepitch.csv").wrap_err("Could not create csv file")?;
+    //csv_file.write_all(b"timestamp,leftkneepitch,rightkneepitch\n")?;
     loop {
         //info!("{:?}", &lola_message);
-        let mut timestamp = [0; 8];
-        file.read_exact(&mut timestamp)
+        let mut timestamp_buf = [0; 16];
+        file.read_exact(&mut timestamp_buf)
             .wrap_err("Could not read next timestamp")?;
-        info!("{}", std::str::from_utf8(&timestamp)?);
+        let timestamp = u128::from_be_bytes(timestamp_buf);
+
+        info!("{}", timestamp);
         let robot_state = read_lola_message(&mut file).wrap_err("failed to read lola message")?;
+        //serde serialize to csv or json, polars dataframe (pandas in cool und in rust)
         /*
         let stiffness = robot_state.stiffness.into_lola();
         let positions = robot_state.position.into_lola();
@@ -60,15 +60,10 @@ fn main() -> Result<()> {
         let gyroscope_z = robot_state.inertial_measurement_unit.gyroscope.z;
         let fsr = robot_state.force_sensitive_resistors;
         */
-        let line = format!(
-            "{},{}\n",
-            std::str::from_utf8(&timestamp)?,
-            robot_state.position.into_lola()[0]
-        );
 
-        csv_file
-            .write_all(line.as_bytes())
-            .wrap_err("Could not write to file")?;
+        //csv_file
+        //  .write_all(line.as_bytes())
+        //.wrap_err("Could not write to file")?;
     }
     Ok(())
 }
