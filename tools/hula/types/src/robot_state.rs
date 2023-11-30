@@ -1,4 +1,4 @@
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use zbus::zvariant::Type;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -33,13 +33,13 @@ pub struct RobotState {
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
 #[repr(C)]
 pub struct RobotConfiguration {
-    #[serde(deserialize_with = "deserialize_id")]
+    #[serde(deserialize_with = "deserialize_id", skip_serializing)]
     pub body_id: [u8; 20],
-    #[serde(deserialize_with = "deserialize_version")]
+    #[serde(deserialize_with = "deserialize_version", skip_serializing)]
     pub body_version: u8,
-    #[serde(deserialize_with = "deserialize_id")]
+    #[serde(deserialize_with = "deserialize_id", skip_serializing)]
     pub head_id: [u8; 20],
-    #[serde(deserialize_with = "deserialize_version")]
+    #[serde(deserialize_with = "deserialize_version", skip_serializing)]
     pub head_version: u8,
 }
 
@@ -103,33 +103,33 @@ pub struct ForceSensitiveResistors {
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[repr(C)]
 pub struct TouchSensors {
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     chest_button: bool,
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     head_front: bool,
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     head_middle: bool,
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     head_rear: bool,
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     left_foot_left: bool,
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     left_foot_right: bool,
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     left_hand_back: bool,
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     left_hand_left: bool,
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     left_hand_right: bool,
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     right_foot_left: bool,
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     right_foot_right: bool,
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     right_hand_back: bool,
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     right_hand_left: bool,
-    #[serde(deserialize_with = "float_as_bool")]
+        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     right_hand_right: bool,
 }
 
@@ -138,6 +138,13 @@ where
     D: Deserializer<'de>,
 {
     Ok(f32::deserialize(deserializer)? >= 0.5)
+}
+
+fn bool_as_int<S>(input: &bool, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_u8(*input as u8)
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
