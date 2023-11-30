@@ -1,10 +1,10 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use zbus::zvariant::Type;
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 #[repr(C)]
 pub struct RobotState {
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub received_at: f32, // TODO convert to Duration?
     #[serde(rename = "RobotConfig")]
     pub robot_configuration: RobotConfiguration,
@@ -30,7 +30,7 @@ pub struct RobotState {
     pub status: JointsArray,
 }
 
-#[derive(Clone, Copy, Debug, Default, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
 #[repr(C)]
 pub struct RobotConfiguration {
     #[serde(deserialize_with = "deserialize_id")]
@@ -76,7 +76,7 @@ pub struct Battery {
     pub temperature: f32,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 #[repr(C)]
 pub struct InertialMeasurementUnit {
     #[serde(rename = "Accelerometer")]
@@ -87,7 +87,7 @@ pub struct InertialMeasurementUnit {
     pub gyroscope: Vertex3,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 #[repr(C)]
 pub struct ForceSensitiveResistors {
     left_foot_front_left: f32,
@@ -100,7 +100,7 @@ pub struct ForceSensitiveResistors {
     right_foot_rear_right: f32,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 #[repr(C)]
 pub struct TouchSensors {
     #[serde(deserialize_with = "float_as_bool")]
@@ -140,7 +140,7 @@ where
     Ok(f32::deserialize(deserializer)? >= 0.5)
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 #[repr(C)]
 pub struct SonarSensors {
     left: f32,
@@ -209,14 +209,14 @@ impl JointsArray {
     }
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 #[repr(C)]
 pub struct Vertex2 {
     pub x: f32,
     pub y: f32,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 #[repr(C)]
 pub struct Vertex3 {
     pub x: f32,
