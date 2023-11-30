@@ -14,3 +14,5 @@ hula-types = { workspace = true }
 rmp-serde = "1.1.1"
 polars = { version = "0.35.4", features = ["lazy"]}
 serde_json = { workspace = true }
+flatten-json-object = "0.6.1"
+csv = "1.3.0"
