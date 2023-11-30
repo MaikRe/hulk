@@ -12,3 +12,5 @@ log = { workspace = true }
 color-eyre = { workspace = true }
 hula-types = { workspace = true }
 rmp-serde = "1.1.1"
+polars = { version = "0.35.4", features = ["lazy"]}
+serde_json = { workspace = true }

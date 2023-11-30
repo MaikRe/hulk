@@ -2,8 +2,13 @@ use clap::Parser;
 use color_eyre::eyre::{Result, WrapErr};
 use hula_types::RobotState;
 use log::{info, LevelFilter};
+use polars::prelude::*;
 use rmp_serde::from_slice;
-use std::{fs::File, io::Read};
+use serde_json;
+use std::{
+    fs::File,
+    io::{self, Read},
+};
 const LOLA_BUFF_SIZE: usize = 896;
 //const HULA_BUFF_SIZE: usize = 786;
 #[derive(Parser, Debug)]
@@ -16,6 +21,7 @@ struct Arguments {
     #[arg(short, long)]
     verbose: bool,
 }
+
 fn main() -> Result<()> {
     let matches = Arguments::parse();
     env_logger::builder()
@@ -28,18 +34,22 @@ fn main() -> Result<()> {
             },
         )
         .init();
-    let mut file = File::open("/home/maik/lola_to_hula_passthrough.2023_11_28_12_33_32")
-        .wrap_err("Failed to open file")?;
+    let mut file = File::open("/home/maik/LOLADATA/lola30").wrap_err("Failed to open file")?;
     //let csv_file = File::create("kneepitch.csv").wrap_err("Could not create csv file")?;
     //csv_file.write_all(b"timestamp,leftkneepitch,rightkneepitch\n")?;
-    loop {
-        //info!("{:?}", &lola_message);
-        let mut timestamp_buf = [0; 16];
-        file.read_exact(&mut timestamp_buf)
-            .wrap_err("Could not read next timestamp")?;
+    let dataframe = DataFrame::default();
+    let mut timestamp_buf = [0; 16];
+    file.read_exact(&mut timestamp_buf)
+        .wrap_err("Could not read first time stamp")?;
+    let mut robot_state =
+        read_lola_message(&mut file).wrap_err("Failed to read first lola message")?;
+    robot_state.received_at = 1000.0;
+    let jsonstring = serde_json::to_value(robot_state).wrap_err("Could not convert to json")?;
+    info!("{}", jsonstring);
+    //print!("{}", robot_state);
+    /*
+    while let Ok(()) = file.read_exact(&mut timestamp_buf) {
         let timestamp = u128::from_be_bytes(timestamp_buf);
-
-        info!("{}", timestamp);
         let robot_state = read_lola_message(&mut file).wrap_err("failed to read lola message")?;
         //serde serialize to csv or json, polars dataframe (pandas in cool und in rust)
         /*
@@ -50,7 +60,9 @@ fn main() -> Result<()> {
         let battery_charge = robot_state.battery.charge;
         let battery_current = robot_state.battery.current;
         let battery_temperature = robot_state.battery.temperature;
-        let accelerometer_x = robot_state.inertial_measurement_unit.accelerometer.x;
+        */
+        //let accelerometer_x = robot_state.inertial_measurement_unit.accelerometer.x;
+        /*
         let accelerometer_y = robot_state.inertial_measurement_unit.accelerometer.y;
         let accelerometer_z = robot_state.inertial_measurement_unit.accelerometer.z;
         let imu_angles_x = robot_state.inertial_measurement_unit.angles.x;
@@ -65,6 +77,8 @@ fn main() -> Result<()> {
         //  .write_all(line.as_bytes())
         //.wrap_err("Could not write to file")?;
     }
+    */
+
     Ok(())
 }
 fn read_lola_message(lola: &mut File) -> Result<RobotState> {
