@@ -65,9 +65,9 @@ impl Proxy {
         add_to_epoll(epoll_fd, hula_passthrough.as_raw_fd())
             .wrap_err("passthrough failed to register hula file descriptor in epoll")?;
         let timestamp = Local::now().format("%Y_%m_%d_%H_%M_%S");
-        let lola_file = File::create(format!("/home/nao/lola_to_hula_passthrough.{}", timestamp))
+        let lola_file = File::create(format!("/home/nao/hulk/logs/lola_to_hula_passthrough.{}", timestamp))
             .wrap_err("Failed to create log file of lola messages")?;
-        let hula_file = File::create(format!("/home/nao/hula_to_lola_passthrough.{}", timestamp))
+        let hula_file = File::create(format!("/home/nao/hulk/logs/hula_to_lola_passthrough.{}", timestamp))
             .wrap_err("Failed to create log file of hula messages")?;
         Ok(Self {
             lola,
