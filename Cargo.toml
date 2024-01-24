@@ -43,8 +43,14 @@ members = [
   "tools/twix",
   "tools/lollipop"
 ]
-# HuLA, HuLAHoop and Aliveness are built independently by yocto
-exclude = ["tools/aliveness", "tools/hula",   "tools/hulahoop"]
+# HuLA and Aliveness are built independently by yocto
+exclude = ["tools/aliveness", "tools/breeze", "tools/hula", "tools/hulahoop"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+homepage = "https://github.com/hulks/hulk"
 
 [workspace.dependencies]
 aliveness = { path = "crates/aliveness" }
