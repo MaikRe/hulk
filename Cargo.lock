@@ -3297,10 +3297,12 @@ dependencies = [
  "env_logger",
  "flatten-json-object",
  "hula-types",
+ "hulk_nao",
  "log",
  "polars",
  "rmp-serde",
  "serde_json",
+ "types",
 ]
 
 [[package]]
