@@ -16,7 +16,7 @@ use kinematics::{
 use log::{debug, LevelFilter};
 use nalgebra::{Isometry3, Point, Point3};
 use rmp_serde::from_slice;
-use std::{fs::File, io::Read};
+use std::{fs::File, io::Read, path::PathBuf};
 use types::{
     joints::{arm::ArmJoints, head::HeadJoints, leg::LegJoints, Joints},
     robot_dimensions::RobotDimensions,
@@ -29,6 +29,8 @@ const LOLA_BUFF_SIZE: usize = 896;
     about = "Open HULA/LoLA passthrough files and convert to csv"
 )]
 struct Arguments {
+    /// Path to file to convert
+    file: PathBuf,
     /// Log with Debug log level
     #[arg(short, long)]
     verbose: bool,
@@ -46,8 +48,9 @@ fn main() -> Result<()> {
             },
         )
         .init();
-    let mut filewriter = Writer::from_path("/home/maik/TUHH/Projektarbeit/logs_24_01_2024/lola_to_hula_passthrough.2024_01_24_13_49_52.comtest.csv")?;
-    let mut file = File::open("/home/maik/TUHH/Projektarbeit/logs_24_01_2024/lola_to_hula_passthrough.2024_01_24_13_49_52").wrap_err("Failed to open file")?;
+    let input_file = matches.file.as_path();
+    let mut filewriter = Writer::from_path(format!("{}.csv", input_file.display()))?;
+    let mut file = File::open(input_file.as_os_str()).wrap_err("Failed to open file")?;
     let mut timestamp_buf = [0; 16];
     let timestamp = u128::from_be_bytes(timestamp_buf);
     file.read_exact(&mut timestamp_buf)
