@@ -14,7 +14,7 @@ use kinematics::{
     right_upper_arm_to_right_shoulder, right_wrist_to_right_forearm,
 };
 use log::{debug, LevelFilter};
-use nalgebra::{Isometry3, Point, Point3};
+use nalgebra::{vector, Isometry3, Point, Point3, Translation, Vector3};
 use rmp_serde::from_slice;
 use std::{fs::File, io::Read, path::PathBuf};
 use types::{
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
         .wrap_err("Could not read first time stamp")?;
     let mut robot_state =
         read_lola_message(&mut file).wrap_err("Failed to read first lola message")?;
-    let center_of_mass = center_of_mass_function(&robot_state).coords;
+    let (center_of_mass, center_of_mass_in_ground) = center_of_mass_function(&robot_state);
     robot_state.received_at = timestamp as f32;
     let jsonobject = serde_json::to_value(robot_state).wrap_err("Could not convert to json")?;
     let flattener = Flattener::new().set_key_separator(".");
@@ -73,6 +73,9 @@ fn main() -> Result<()> {
     keys.push("center_of_mass.x".to_string());
     keys.push("center_of_mass.y".to_string());
     keys.push("center_of_mass.z".to_string());
+    keys.push("center_in_ground.x".to_string());
+    keys.push("center_in_ground.y".to_string());
+    keys.push("center_in_ground.z".to_string());
     let mut values = output
         .as_object()
         .into_iter()
@@ -82,6 +85,9 @@ fn main() -> Result<()> {
     values.push(center_of_mass.x.to_string());
     values.push(center_of_mass.y.to_string());
     values.push(center_of_mass.z.to_string());
+    values.push(center_of_mass_in_ground.x.to_string());
+    values.push(center_of_mass_in_ground.y.to_string());
+    values.push(center_of_mass_in_ground.z.to_string());
     debug!("{:?}", keys);
     filewriter.write_record(keys)?;
     filewriter.write_record(values)?;
@@ -89,7 +95,7 @@ fn main() -> Result<()> {
         let timestamp = u128::from_be_bytes(timestamp_buf);
         let mut robot_state =
             read_lola_message(&mut file).wrap_err("failed to read lola message")?;
-        let center_of_mass = center_of_mass_function(&robot_state).coords;
+        let (center_of_mass, center_of_mass_in_ground) = center_of_mass_function(&robot_state);
         robot_state.received_at = timestamp as f32;
         let jsonobject = serde_json::to_value(robot_state).wrap_err("Could not convert to json")?;
         let output = flattener
@@ -104,6 +110,9 @@ fn main() -> Result<()> {
         values.push(center_of_mass.x.to_string());
         values.push(center_of_mass.y.to_string());
         values.push(center_of_mass.z.to_string());
+        values.push(center_of_mass_in_ground.x.to_string());
+        values.push(center_of_mass_in_ground.y.to_string());
+        values.push(center_of_mass_in_ground.z.to_string());
         filewriter.write_record(values)?;
     }
 
@@ -116,7 +125,7 @@ fn read_lola_message(lola: &mut File) -> Result<RobotState> {
     from_slice(&lola_data).wrap_err("failed to parse MessagePack from LoLA StateMessage")
 }
 
-fn center_of_mass_function(robot_state: &RobotState) -> Point3<f32> {
+fn center_of_mass_function(robot_state: &RobotState) -> (Point3<f32>, Point3<f32>) {
     let positions = robot_state.position;
     let joints = Joints {
         head: HeadJoints {
@@ -185,7 +194,7 @@ fn center_of_mass_function(robot_state: &RobotState) -> Point3<f32> {
     let left_tibia_to_robot = left_thigh_to_robot * left_tibia_to_left_thigh(&joints.left_leg);
     let left_ankle_to_robot = left_tibia_to_robot * left_ankle_to_left_tibia(&joints.left_leg);
     let left_foot_to_robot = left_ankle_to_robot * left_foot_to_left_ankle(&joints.left_leg);
-    // let left_sole_to_robot = left_foot_to_robot * Translation::from(RobotDimensions::ANKLE_TO_SOLE);
+    let left_sole_to_robot = left_foot_to_robot * Translation::from(RobotDimensions::ANKLE_TO_SOLE);
     // right leg
     let right_pelvis_to_robot = right_pelvis_to_robot(&joints.right_leg);
     let right_hip_to_robot = right_pelvis_to_robot * right_hip_to_right_pelvis(&joints.right_leg);
@@ -193,8 +202,8 @@ fn center_of_mass_function(robot_state: &RobotState) -> Point3<f32> {
     let right_tibia_to_robot = right_thigh_to_robot * right_tibia_to_right_thigh(&joints.right_leg);
     let right_ankle_to_robot = right_tibia_to_robot * right_ankle_to_right_tibia(&joints.right_leg);
     let right_foot_to_robot = right_ankle_to_robot * right_foot_to_right_ankle(&joints.right_leg);
-    // let right_sole_to_robot =
-    // right_foot_to_robot * Translation::from(RobotDimensions::ANKLE_TO_SOLE);
+    let right_sole_to_robot =
+        right_foot_to_robot * Translation::from(RobotDimensions::ANKLE_TO_SOLE);
 
     //center of mass
     let center_of_mass = (RobotMass::TORSO.mass
@@ -237,5 +246,36 @@ fn center_of_mass_function(robot_state: &RobotState) -> Point3<f32> {
             * (right_ankle_to_robot * RobotMass::RIGHT_ANKLE.center).coords
         + RobotMass::RIGHT_FOOT.mass * (right_foot_to_robot * RobotMass::RIGHT_FOOT.center).coords)
         / RobotMass::TOTAL_MASS;
-    Point::from(center_of_mass)
+
+    //center of mass in ground coordinates
+    let imu_adjusted_robot_to_left_sole =
+        Isometry3::rotation(Vector3::y() * robot_state.inertial_measurement_unit.angles.y)
+            * Isometry3::rotation(Vector3::x() * robot_state.inertial_measurement_unit.angles.x)
+            * Isometry3::from(left_sole_to_robot.translation.inverse());
+    let imu_adjusted_robot_to_right_sole =
+        Isometry3::rotation(Vector3::y() * robot_state.inertial_measurement_unit.angles.y)
+            * Isometry3::rotation(Vector3::x() * robot_state.inertial_measurement_unit.angles.x)
+            * Isometry3::from(right_sole_to_robot.translation.inverse());
+    let left_sole_to_right_sole =
+        right_sole_to_robot.translation.vector - left_sole_to_robot.translation.vector;
+    let left_sole_to_ground =
+        0.5 * vector![left_sole_to_right_sole.x, left_sole_to_right_sole.y, 0.0];
+    let left_sum = robot_state.force_sensitive_resistors.left_foot_front_left
+        + robot_state.force_sensitive_resistors.left_foot_front_right
+        + robot_state.force_sensitive_resistors.left_foot_rear_left
+        + robot_state.force_sensitive_resistors.left_foot_rear_right;
+    let right_sum = robot_state.force_sensitive_resistors.right_foot_front_left
+        + robot_state.force_sensitive_resistors.right_foot_front_right
+        + robot_state.force_sensitive_resistors.right_foot_rear_left
+        + robot_state.force_sensitive_resistors.right_foot_rear_right;
+    let robot_to_ground = if left_sum > right_sum {
+        Translation::from(-left_sole_to_ground) * imu_adjusted_robot_to_left_sole
+    } else {
+        Translation::from(left_sole_to_ground) * imu_adjusted_robot_to_right_sole
+    };
+    let center_of_mass_in_ground = robot_to_ground * center_of_mass;
+    (
+        Point::from(center_of_mass),
+        Point::from(center_of_mass_in_ground),
+    )
 }

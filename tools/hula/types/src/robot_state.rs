@@ -90,46 +90,46 @@ pub struct InertialMeasurementUnit {
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[repr(C)]
 pub struct ForceSensitiveResistors {
-    left_foot_front_left: f32,
-    left_foot_front_right: f32,
-    left_foot_rear_left: f32,
-    left_foot_rear_right: f32,
-    right_foot_front_left: f32,
-    right_foot_front_right: f32,
-    right_foot_rear_left: f32,
-    right_foot_rear_right: f32,
+    pub left_foot_front_left: f32,
+    pub left_foot_front_right: f32,
+    pub left_foot_rear_left: f32,
+    pub left_foot_rear_right: f32,
+    pub right_foot_front_left: f32,
+    pub right_foot_front_right: f32,
+    pub right_foot_rear_left: f32,
+    pub right_foot_rear_right: f32,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[repr(C)]
 pub struct TouchSensors {
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     chest_button: bool,
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     head_front: bool,
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     head_middle: bool,
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     head_rear: bool,
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     left_foot_left: bool,
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     left_foot_right: bool,
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     left_hand_back: bool,
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     left_hand_left: bool,
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     left_hand_right: bool,
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     right_foot_left: bool,
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     right_foot_right: bool,
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     right_hand_back: bool,
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     right_hand_left: bool,
-        #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
+    #[serde(deserialize_with = "float_as_bool", serialize_with = "bool_as_int")]
     right_hand_right: bool,
 }
 
