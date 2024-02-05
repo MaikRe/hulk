@@ -273,7 +273,7 @@ fn center_of_mass_function(robot_state: &RobotState) -> (Point3<f32>, Point3<f32
     } else {
         Translation::from(left_sole_to_ground) * imu_adjusted_robot_to_right_sole
     };
-    let center_of_mass_in_ground = robot_to_ground * center_of_mass;
+    let center_of_mass_in_ground = robot_to_ground * Point::from(center_of_mass);
     (
         Point::from(center_of_mass),
         Point::from(center_of_mass_in_ground),
