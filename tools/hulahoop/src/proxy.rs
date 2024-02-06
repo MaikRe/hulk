@@ -65,10 +65,16 @@ impl Proxy {
         add_to_epoll(epoll_fd, hula_passthrough.as_raw_fd())
             .wrap_err("passthrough failed to register hula file descriptor in epoll")?;
         let timestamp = Local::now().format("%Y_%m_%d_%H_%M_%S");
-        let lola_file = File::create(format!("/home/nao/hulk/logs/lola_to_hula_passthrough.{}", timestamp))
-            .wrap_err("Failed to create log file of lola messages")?;
-        let hula_file = File::create(format!("/home/nao/hulk/logs/hula_to_lola_passthrough.{}", timestamp))
-            .wrap_err("Failed to create log file of hula messages")?;
+        let lola_file = File::create(format!(
+            "/home/nao/hulk/logs/lola_to_hula_passthrough.{}",
+            timestamp
+        ))
+        .wrap_err("Failed to create log file of lola messages")?;
+        let hula_file = File::create(format!(
+            "/home/nao/hulk/logs/hula_to_lola_passthrough.{}",
+            timestamp
+        ))
+        .wrap_err("Failed to create log file of hula messages")?;
         Ok(Self {
             lola,
             hula_passthrough,
@@ -185,9 +191,10 @@ fn handle_connection_event(
     match connections.get_mut(&notified_fd) {
         Some(connection) => {
             let mut read_buffer = [0; HULA_BUFF_SIZE];
-            if let Err(error) = connection.socket.read_exact(&mut read_buffer) {
+            if let Err(error) = connection.socket.read(&mut read_buffer) {
                 error!("Failed to read from connection: {}", error);
                 info!("Removing connection with file descriptor {}", notified_fd);
+                dbg!(read_buffer);
                 // remove will drop, drop will close, close will EPOLL_CTL_DEL
                 connections
                     .remove(&notified_fd)
