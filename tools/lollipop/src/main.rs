@@ -53,17 +53,24 @@ fn main() -> Result<()> {
     let mut file = File::open(input_file.as_os_str()).wrap_err("Failed to open file")?;
     let mut timestamp_buf = [0; 16];
     let timestamp = u128::from_be_bytes(timestamp_buf);
+
     file.read_exact(&mut timestamp_buf)
         .wrap_err("Could not read first time stamp")?;
     let mut robot_state =
         read_lola_message(&mut file).wrap_err("Failed to read first lola message")?;
-    let (center_of_mass, center_of_mass_in_ground) = center_of_mass_function(&robot_state);
+
+    let (center_of_mass, center_of_mass_rot_ground) = center_of_mass_function(&robot_state);
     robot_state.received_at = timestamp as f32;
+    let mut left_sum = left_fsr_sum(&robot_state);
+    let mut right_sum = right_fsr_sum(&robot_state);
+    let mut left_has_more_pressure = left_sum >= right_sum;
+
     let jsonobject = serde_json::to_value(robot_state).wrap_err("Could not convert to json")?;
     let flattener = Flattener::new().set_key_separator(".");
     let output = flattener
         .flatten(&jsonobject)
         .wrap_err("Failed to flatten")?;
+
     let mut keys = output
         .as_object()
         .into_iter()
@@ -76,6 +83,10 @@ fn main() -> Result<()> {
     keys.push("center_in_ground.x".to_string());
     keys.push("center_in_ground.y".to_string());
     keys.push("center_in_ground.z".to_string());
+    keys.push("left_is_support".to_string());
+    keys.push("left_fsr_sum".to_string());
+    keys.push("right_fsr_sum".to_string());
+
     let mut values = output
         .as_object()
         .into_iter()
@@ -85,9 +96,12 @@ fn main() -> Result<()> {
     values.push(center_of_mass.x.to_string());
     values.push(center_of_mass.y.to_string());
     values.push(center_of_mass.z.to_string());
-    values.push(center_of_mass_in_ground.x.to_string());
-    values.push(center_of_mass_in_ground.y.to_string());
-    values.push(center_of_mass_in_ground.z.to_string());
+    values.push(center_of_mass_rot_ground.x.to_string());
+    values.push(center_of_mass_rot_ground.y.to_string());
+    values.push(center_of_mass_rot_ground.z.to_string());
+    values.push((left_has_more_pressure as i8).to_string());
+    values.push(left_sum.to_string());
+    values.push(right_sum.to_string());
     debug!("{:?}", keys);
     filewriter.write_record(keys)?;
     filewriter.write_record(values)?;
@@ -95,8 +109,18 @@ fn main() -> Result<()> {
         let timestamp = u128::from_be_bytes(timestamp_buf);
         let mut robot_state =
             read_lola_message(&mut file).wrap_err("failed to read lola message")?;
-        let (center_of_mass, center_of_mass_in_ground) = center_of_mass_function(&robot_state);
+
+        let (center_of_mass, center_of_mass_rot_ground) = center_of_mass_function(&robot_state);
         robot_state.received_at = timestamp as f32;
+        left_sum = left_fsr_sum(&robot_state);
+        right_sum = right_fsr_sum(&robot_state);
+        left_has_more_pressure = greater_than_with_hysteresis(
+            left_has_more_pressure,
+            left_fsr_sum(&robot_state),
+            right_fsr_sum(&robot_state),
+            0.2,
+        );
+
         let jsonobject = serde_json::to_value(robot_state).wrap_err("Could not convert to json")?;
         let output = flattener
             .flatten(&jsonobject)
@@ -110,9 +134,12 @@ fn main() -> Result<()> {
         values.push(center_of_mass.x.to_string());
         values.push(center_of_mass.y.to_string());
         values.push(center_of_mass.z.to_string());
-        values.push(center_of_mass_in_ground.x.to_string());
-        values.push(center_of_mass_in_ground.y.to_string());
-        values.push(center_of_mass_in_ground.z.to_string());
+        values.push(center_of_mass_rot_ground.x.to_string());
+        values.push(center_of_mass_rot_ground.y.to_string());
+        values.push(center_of_mass_rot_ground.z.to_string());
+        values.push((left_has_more_pressure as i8).to_string());
+        values.push(left_sum.to_string());
+        values.push(right_sum.to_string());
         filewriter.write_record(values)?;
     }
 
@@ -123,6 +150,34 @@ fn read_lola_message(lola: &mut File) -> Result<RobotState> {
     lola.read_exact(&mut lola_data)
         .wrap_err("failed to read next message pack")?;
     from_slice(&lola_data).wrap_err("failed to parse MessagePack from LoLA StateMessage")
+}
+
+pub fn greater_than_with_hysteresis(
+    last_evaluation: bool,
+    value: f32,
+    threshold: f32,
+    hysteresis: f32,
+) -> bool {
+    value
+        > threshold
+            + if last_evaluation {
+                -hysteresis
+            } else {
+                hysteresis
+            }
+}
+
+fn left_fsr_sum(robot_state: &RobotState) -> f32 {
+    robot_state.force_sensitive_resistors.left_foot_front_left
+        + robot_state.force_sensitive_resistors.left_foot_front_right
+        + robot_state.force_sensitive_resistors.left_foot_rear_left
+        + robot_state.force_sensitive_resistors.left_foot_rear_right
+}
+fn right_fsr_sum(robot_state: &RobotState) -> f32 {
+    robot_state.force_sensitive_resistors.right_foot_front_left
+        + robot_state.force_sensitive_resistors.right_foot_front_right
+        + robot_state.force_sensitive_resistors.right_foot_rear_left
+        + robot_state.force_sensitive_resistors.right_foot_rear_right
 }
 
 fn center_of_mass_function(robot_state: &RobotState) -> (Point3<f32>, Point3<f32>) {
@@ -248,12 +303,12 @@ fn center_of_mass_function(robot_state: &RobotState) -> (Point3<f32>, Point3<f32
         / RobotMass::TOTAL_MASS;
 
     //center of mass in ground coordinates
-    let center_of_mass_in_ground =
+    let center_of_mass_rot_ground =
         Isometry3::rotation(Vector3::y() * robot_state.inertial_measurement_unit.angles.y)
             * Isometry3::rotation(Vector3::x() * robot_state.inertial_measurement_unit.angles.x)
             * Point::from(center_of_mass);
     (
         Point::from(center_of_mass),
-        Point::from(center_of_mass_in_ground),
+        Point::from(center_of_mass_rot_ground),
     )
 }
