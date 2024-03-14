@@ -56,6 +56,7 @@ fn main() -> Result<()> {
     let flattener = Flattener::new().set_key_separator(".");
     let mut left_has_more_pressure = false;
     let mut header = true;
+    let mut last_timestamp = 0;
     while let Ok(()) = file.read_exact(&mut timestamp_buf) {
         let timestamp = u128::from_be_bytes(timestamp_buf);
         let mut robot_state =
@@ -112,6 +113,7 @@ fn main() -> Result<()> {
             keys.push("right_sole.y".to_string());
             keys.push("right_sole.z".to_string());
             keys.push("left_is_support_imu".to_string());
+            keys.push("frame_length".to_string());
             debug!("{:?}", keys);
             filewriter.write_record(keys)?;
             header = false;
@@ -145,8 +147,9 @@ fn main() -> Result<()> {
         values.push(right_sole.y.to_string());
         values.push(right_sole.z.to_string());
         values.push((left_support as i8).to_string());
-
+        values.push((timestamp - last_timestamp).to_string());
         filewriter.write_record(values)?;
+        last_timestamp = timestamp;
     }
 
     Ok(())
@@ -357,8 +360,8 @@ fn all_the_calculations_function(
         Point::from(acceleration_rot_ground),
         imu_adjusted_robot_to_left_sole.translation.z
             >= imu_adjusted_robot_to_right_sole.translation.z,
-        imu_adjusted_robot_to_left_sole.translation * Point::origin(),
-        imu_adjusted_robot_to_right_sole.translation * Point::origin(),
+        imu_adjusted_robot_to_left_sole.translation * Point::origin(), //this is wrong
+        imu_adjusted_robot_to_right_sole.translation * Point::origin(), //this is wrong
         robot_to_ground.transform_point(&center_of_mass_rot_ground),
     )
 }
