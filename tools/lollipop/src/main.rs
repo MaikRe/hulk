@@ -14,7 +14,9 @@ use kinematics::{
     right_upper_arm_to_right_shoulder, right_wrist_to_right_forearm,
 };
 use log::{debug, LevelFilter};
-use nalgebra::{point, vector, Isometry3, Point, Point3, Translation, Vector3};
+use nalgebra::{
+    point, vector, ArrayStorage, Const, Isometry3, Matrix, Point, Point3, Translation, Vector3,
+};
 use rmp_serde::from_slice;
 use std::{fs::File, io::Read, path::PathBuf};
 use types::{
@@ -77,8 +79,11 @@ fn main() -> Result<()> {
             left_sole,
             right_sole,
             center_of_mass_in_ground,
+            temp_front_convex_left_sole,
+            left_convex_hull,
         } = all_the_calculations_function(&robot_state, left_has_more_pressure);
         robot_state.received_at = timestamp as f32;
+        // debug!("{}", temp_front_convex_left_sole);
 
         let jsonobject = serde_json::to_value(robot_state).wrap_err("Could not convert to json")?;
         let output = flattener
@@ -113,7 +118,15 @@ fn main() -> Result<()> {
             keys.push("right_sole.y".to_string());
             keys.push("right_sole.z".to_string());
             keys.push("left_is_support_imu".to_string());
+            keys.push("left_front_convex.x".to_string());
+            keys.push("left_front_convex.y".to_string());
+            keys.push("left_front_convex.z".to_string());
             keys.push("frame_length".to_string());
+            for i in 0..34 {
+                keys.push(format!("left_convex.{}.x", i));
+                keys.push(format!("left_convex.{}.y", i));
+                keys.push(format!("left_convex.{}.z", i));
+            }
             debug!("{:?}", keys);
             filewriter.write_record(keys)?;
             header = false;
@@ -150,7 +163,15 @@ fn main() -> Result<()> {
         values.push(right_sole.y.to_string());
         values.push(right_sole.z.to_string());
         values.push((left_is_support_imu as i8).to_string());
+        values.push(temp_front_convex_left_sole.x.to_string());
+        values.push(temp_front_convex_left_sole.y.to_string());
+        values.push(temp_front_convex_left_sole.z.to_string());
         values.push((timestamp - last_timestamp).to_string());
+        for i in left_convex_hull {
+            values.push(i.x.to_string());
+            values.push(i.y.to_string());
+            values.push(i.z.to_string());
+        }
 
         //TODO add check for falling of robot which will potentially remove this frame plus before and after from data
 
@@ -204,6 +225,8 @@ struct AllTheCalculationsFunctionResult {
     left_sole: Point3<f32>,
     right_sole: Point3<f32>,
     center_of_mass_in_ground: Point3<f32>,
+    temp_front_convex_left_sole: Point3<f32>,
+    left_convex_hull: Vec<Matrix<f32, Const<3>, Const<1>, ArrayStorage<f32, 3, 1>>>,
 }
 
 fn all_the_calculations_function(
@@ -368,41 +391,70 @@ fn all_the_calculations_function(
     let left_sole = robot_to_parallel * left_sole_to_robot * Point::origin();
     let right_sole = robot_to_parallel * right_sole_to_robot * Point::origin();
 
+    let left_sole_to_robot_in_parallel = robot_to_parallel * left_sole_to_robot;
+    // debug!(
+    //     "Point in parallel{}",
+    //     left_sole_to_robot_in_parallel * point![0.100103, -0.001572, 0.0]
+    // );
+    // // debug!(
+    // //     "Vector in parallel{}",
+    // //     left_sole_to_robot_in_parallel * vector![0.100103, -0.001572, 0.0]
+    // // );
+    // debug!("Left sole{}", left_sole);
+    // debug!(
+    //     "Subtract points{}",
+    //     left_sole_to_robot_in_parallel * point![0.100103, -0.001572, 0.0] - left_sole
+    // );
+
+    // debug!(
+    //     "Subtracting the positions{}",
+    //     left_sole - (left_sole_to_robot_in_parallel * vector![0.100103, -0.001572, 0.0])
+    // );
+    let temp_front_convex_left_sole =
+        ((left_sole_to_robot_in_parallel * point![0.100103, -0.001572, 0.0]) - left_sole).into();
+
     //convex hull points of left foot
-    //  [[-0.054657  0.029814]
-    //  [-0.05457  -0.015151]
-    //  [-0.049908 -0.023019]
-    //  [-0.04262  -0.030603]
-    //  [-0.037661 -0.033714]
-    //  [-0.03297  -0.034351]
-    //  [ 0.0577   -0.038771]
-    //  [ 0.057705 -0.038771]
-    //  [ 0.063956 -0.038362]
-    //  [ 0.07396  -0.03729 ]
-    //  [ 0.079707 -0.035319]
-    //  [ 0.084651 -0.033221]
-    //  [ 0.087653 -0.031482]
-    //  [ 0.09181  -0.027692]
-    //  [ 0.094015 -0.024299]
-    //  [ 0.096873 -0.018801]
-    //  [ 0.099424 -0.010149]
-    //  [ 0.100103 -0.001572]
-    //  [ 0.098996  0.008695]
-    //  [ 0.097019  0.016504]
-    //  [ 0.094001  0.02418 ]
-    //  [ 0.090468  0.02951 ]
-    //  [ 0.08455   0.036101]
-    //  [ 0.0799    0.039545]
-    //  [ 0.07416   0.042654]
-    //  [ 0.065683  0.046146]
-    //  [ 0.057212  0.047683]
-    //  [ 0.049916  0.048183]
-    //  [-0.031242  0.051719]
-    //  [-0.031248  0.051719]
-    //  [-0.03593   0.049621]
-    //  [-0.040999  0.045959]
-    //  [-0.045156  0.042039]
-    //  [-0.04905   0.037599]]
+    let left_convex_hull_points = [
+        [-0.054657, 0.029814],
+        [-0.05457, -0.015151],
+        [-0.049908, -0.023019],
+        [-0.04262, -0.030603],
+        [-0.037661, -0.033714],
+        [-0.03297, -0.034351],
+        [0.0577, -0.038771],
+        [0.057705, -0.038771],
+        [0.063956, -0.038362],
+        [0.07396, -0.03729],
+        [0.079707, -0.035319],
+        [0.084651, -0.033221],
+        [0.087653, -0.031482],
+        [0.09181, -0.027692],
+        [0.094015, -0.024299],
+        [0.096873, -0.018801],
+        [0.099424, -0.010149],
+        [0.100103, -0.001572],
+        [0.098996, 0.008695],
+        [0.097019, 0.016504],
+        [0.094001, 0.02418],
+        [0.090468, 0.02951],
+        [0.08455, 0.036101],
+        [0.0799, 0.039545],
+        [0.07416, 0.042654],
+        [0.065683, 0.046146],
+        [0.057212, 0.047683],
+        [0.049916, 0.048183],
+        [-0.031242, 0.051719],
+        [-0.031248, 0.051719],
+        [-0.03593, 0.049621],
+        [-0.040999, 0.045959],
+        [-0.045156, 0.042039],
+        [-0.04905, 0.037599],
+    ];
+    let left_convex_hull = left_convex_hull_points
+        .iter()
+        .map(|point| (left_sole_to_robot_in_parallel * point![point[0], point[1], 0.0]) - left_sole)
+        .collect::<Vec<_>>();
+    // debug!("points:{:?}", temp);
 
     let _support_polygon_front = f32::max(right_sole.x, left_sole.x) + 0.1003;
     let _support_polygon_back = f32::min(right_sole.x, left_sole.x) - 0.0546;
@@ -416,5 +468,7 @@ fn all_the_calculations_function(
         left_sole,
         right_sole,
         center_of_mass_in_ground: robot_to_ground * center_of_mass_in_parallel,
+        temp_front_convex_left_sole,
+        left_convex_hull,
     }
 }
