@@ -368,10 +368,46 @@ fn all_the_calculations_function(
     let left_sole = robot_to_parallel * left_sole_to_robot * Point::origin();
     let right_sole = robot_to_parallel * right_sole_to_robot * Point::origin();
 
-    let support_polygon_front = f32::max(right_sole.x, left_sole.x) + 0.1003;
-    let support_polygon_back = f32::min(right_sole.x, left_sole.x) - 0.0546;
-    let support_polygon_left = left_sole.y + 0.051719;
-    let support_polygon_right = right_sole.y - 0.051719;
+    //convex hull points of left foot
+    //  [[-0.054657  0.029814]
+    //  [-0.05457  -0.015151]
+    //  [-0.049908 -0.023019]
+    //  [-0.04262  -0.030603]
+    //  [-0.037661 -0.033714]
+    //  [-0.03297  -0.034351]
+    //  [ 0.0577   -0.038771]
+    //  [ 0.057705 -0.038771]
+    //  [ 0.063956 -0.038362]
+    //  [ 0.07396  -0.03729 ]
+    //  [ 0.079707 -0.035319]
+    //  [ 0.084651 -0.033221]
+    //  [ 0.087653 -0.031482]
+    //  [ 0.09181  -0.027692]
+    //  [ 0.094015 -0.024299]
+    //  [ 0.096873 -0.018801]
+    //  [ 0.099424 -0.010149]
+    //  [ 0.100103 -0.001572]
+    //  [ 0.098996  0.008695]
+    //  [ 0.097019  0.016504]
+    //  [ 0.094001  0.02418 ]
+    //  [ 0.090468  0.02951 ]
+    //  [ 0.08455   0.036101]
+    //  [ 0.0799    0.039545]
+    //  [ 0.07416   0.042654]
+    //  [ 0.065683  0.046146]
+    //  [ 0.057212  0.047683]
+    //  [ 0.049916  0.048183]
+    //  [-0.031242  0.051719]
+    //  [-0.031248  0.051719]
+    //  [-0.03593   0.049621]
+    //  [-0.040999  0.045959]
+    //  [-0.045156  0.042039]
+    //  [-0.04905   0.037599]]
+
+    let _support_polygon_front = f32::max(right_sole.x, left_sole.x) + 0.1003;
+    let _support_polygon_back = f32::min(right_sole.x, left_sole.x) - 0.0546;
+    let _support_polygon_left = left_sole.y + 0.051719;
+    let _support_polygon_right = right_sole.y - 0.051719;
     AllTheCalculationsFunctionResult {
         center_of_mass: Point::from(center_of_mass),
         center_of_mass_in_parallel: Point::from(center_of_mass_in_parallel),
