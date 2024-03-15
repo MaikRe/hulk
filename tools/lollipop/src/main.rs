@@ -119,12 +119,15 @@ fn main() -> Result<()> {
             header = false;
         }
 
+        //convert robot state to values
         let mut values = output
             .as_object()
             .into_iter()
             .flatten()
             .map(|(_key, value)| (format!("{}", value.as_f64().unwrap())))
             .collect::<Vec<_>>();
+
+        //add all of the other values
         values.push(center_of_mass.x.to_string());
         values.push(center_of_mass.y.to_string());
         values.push(center_of_mass.z.to_string());
@@ -148,6 +151,10 @@ fn main() -> Result<()> {
         values.push(right_sole.z.to_string());
         values.push((left_is_support_imu as i8).to_string());
         values.push((timestamp - last_timestamp).to_string());
+
+        //TODO add check for falling of robot which will potentially remove this frame plus before and after from data
+
+        //write values
         filewriter.write_record(values)?;
         last_timestamp = timestamp;
     }
@@ -356,8 +363,15 @@ fn all_the_calculations_function(
     } else {
         Translation::from(left_sole_to_ground) * imu_adjusted_robot_to_right_sole
     };
+
+    //calculate position of soles relative to robot in parallel to ground coordinates
     let left_sole = robot_to_parallel * left_sole_to_robot * Point::origin();
     let right_sole = robot_to_parallel * right_sole_to_robot * Point::origin();
+
+    let support_polygon_front = f32::max(right_sole.x, left_sole.x) + 0.1003;
+    let support_polygon_back = f32::min(right_sole.x, left_sole.x) - 0.0546;
+    let support_polygon_left = left_sole.y + 0.051719;
+    let support_polygon_right = right_sole.y - 0.051719;
     AllTheCalculationsFunctionResult {
         center_of_mass: Point::from(center_of_mass),
         center_of_mass_in_parallel: Point::from(center_of_mass_in_parallel),
