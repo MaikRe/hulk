@@ -71,9 +71,9 @@ fn main() -> Result<()> {
         );
         let (
             center_of_mass,
-            center_of_mass_rot_ground,
-            acceleration_rot_ground,
-            left_support,
+            center_of_mass_in_parallel,
+            accelerometer_in_parallel,
+            left_is_support,
             left_sole,
             right_sole,
             center_of_mass_in_ground,
@@ -94,18 +94,18 @@ fn main() -> Result<()> {
             keys.push("center_of_mass.x".to_string());
             keys.push("center_of_mass.y".to_string());
             keys.push("center_of_mass.z".to_string());
-            keys.push("center_rot_ground.x".to_string());
-            keys.push("center_rot_ground.y".to_string());
-            keys.push("center_rot_ground.z".to_string());
+            keys.push("center_of_mass_in_parallel.x".to_string());
+            keys.push("center_of_mass_in_parallel.y".to_string());
+            keys.push("center_of_mass_in_parallel.z".to_string());
             keys.push("center_in_ground.x".to_string());
             keys.push("center_in_ground.y".to_string());
             keys.push("center_in_ground.z".to_string());
-            keys.push("left_is_support".to_string());
+            keys.push("left_is_support_fsr".to_string());
             keys.push("left_fsr_sum".to_string());
             keys.push("right_fsr_sum".to_string());
-            keys.push("accelerometer_rot_ground.x".to_string());
-            keys.push("accelerometer_rot_ground.y".to_string());
-            keys.push("accelerometer_rot_ground.z".to_string());
+            keys.push("accelerometer_in_parallel.x".to_string());
+            keys.push("accelerometer_in_parallel.y".to_string());
+            keys.push("accelerometer_in_parallel.z".to_string());
             keys.push("left_sole.x".to_string());
             keys.push("left_sole.y".to_string());
             keys.push("left_sole.z".to_string());
@@ -128,25 +128,25 @@ fn main() -> Result<()> {
         values.push(center_of_mass.x.to_string());
         values.push(center_of_mass.y.to_string());
         values.push(center_of_mass.z.to_string());
-        values.push(center_of_mass_rot_ground.x.to_string());
-        values.push(center_of_mass_rot_ground.y.to_string());
-        values.push(center_of_mass_rot_ground.z.to_string());
+        values.push(center_of_mass_in_parallel.x.to_string());
+        values.push(center_of_mass_in_parallel.y.to_string());
+        values.push(center_of_mass_in_parallel.z.to_string());
         values.push(center_of_mass_in_ground.x.to_string());
         values.push(center_of_mass_in_ground.y.to_string());
         values.push(center_of_mass_in_ground.z.to_string());
         values.push((left_has_more_pressure as i8).to_string());
         values.push(left_sum.to_string());
         values.push(right_sum.to_string());
-        values.push(acceleration_rot_ground.x.to_string());
-        values.push(acceleration_rot_ground.y.to_string());
-        values.push(acceleration_rot_ground.z.to_string());
+        values.push(accelerometer_in_parallel.x.to_string());
+        values.push(accelerometer_in_parallel.y.to_string());
+        values.push(accelerometer_in_parallel.z.to_string());
         values.push(left_sole.x.to_string());
         values.push(left_sole.y.to_string());
         values.push(left_sole.z.to_string());
         values.push(right_sole.x.to_string());
         values.push(right_sole.y.to_string());
         values.push(right_sole.z.to_string());
-        values.push((left_support as i8).to_string());
+        values.push((left_is_support as i8).to_string());
         values.push((timestamp - last_timestamp).to_string());
         filewriter.write_record(values)?;
         last_timestamp = timestamp;
@@ -322,46 +322,47 @@ fn all_the_calculations_function(
         + RobotMass::RIGHT_FOOT.mass * (right_foot_to_robot * RobotMass::RIGHT_FOOT.center).coords)
         / RobotMass::TOTAL_MASS;
 
-    //center of mass in ground coordinates
-    let center_of_mass_rot_ground =
+    //isometry based on imu
+    let robot_to_parallel =
         Isometry3::rotation(Vector3::y() * robot_state.inertial_measurement_unit.angles.y)
-            * Isometry3::rotation(Vector3::x() * robot_state.inertial_measurement_unit.angles.x)
-            * Point::from(center_of_mass);
-    let acceleration_rot_ground =
-        Isometry3::rotation(Vector3::y() * robot_state.inertial_measurement_unit.angles.y)
-            * Isometry3::rotation(Vector3::x() * robot_state.inertial_measurement_unit.angles.x)
-            * point![
-                robot_state.inertial_measurement_unit.accelerometer.x,
-                robot_state.inertial_measurement_unit.accelerometer.y,
-                robot_state.inertial_measurement_unit.accelerometer.z,
-            ];
-    let imu_adjusted_robot_to_left_sole =
-        Isometry3::rotation(Vector3::y() * robot_state.inertial_measurement_unit.angles.x)
-            * Isometry3::rotation(Vector3::x() * robot_state.inertial_measurement_unit.angles.y)
-            * Isometry3::from(left_sole_to_robot.translation.inverse());
-    let imu_adjusted_robot_to_right_sole =
-        Isometry3::rotation(Vector3::y() * robot_state.inertial_measurement_unit.angles.x)
-            * Isometry3::rotation(Vector3::x() * robot_state.inertial_measurement_unit.angles.y)
-            * Isometry3::from(right_sole_to_robot.translation.inverse());
+            * Isometry3::rotation(Vector3::x() * robot_state.inertial_measurement_unit.angles.x);
+    //center of mass rotated parallel to ground
+    let center_of_mass_in_parallel = robot_to_parallel * Point::from(center_of_mass);
+    //acceleration rotated parallel to ground
+    let accelerometer_in_parallel = robot_to_parallel
+        * point![
+            robot_state.inertial_measurement_unit.accelerometer.x,
+            robot_state.inertial_measurement_unit.accelerometer.y,
+            robot_state.inertial_measurement_unit.accelerometer.z,
+        ];
 
+    //feet relative to robot position rotated parallel to ground
+    let imu_adjusted_robot_to_left_sole =
+        robot_to_parallel * Isometry3::from(left_sole_to_robot.translation.inverse());
+    let imu_adjusted_robot_to_right_sole =
+        robot_to_parallel * Isometry3::from(right_sole_to_robot.translation.inverse());
+
+    //middle of feet regardless of z position becomes the ground coordinate
     let left_sole_to_right_sole =
         right_sole_to_robot.translation.vector - left_sole_to_robot.translation.vector;
     let left_sole_to_ground =
         0.5 * vector![left_sole_to_right_sole.x, left_sole_to_right_sole.y, 0.0];
 
+    //robot to ground assuming moving ground which is halfway between left and right soles
     let robot_to_ground = if left_has_more_pressure {
         Translation::from(-left_sole_to_ground) * imu_adjusted_robot_to_left_sole
     } else {
         Translation::from(left_sole_to_ground) * imu_adjusted_robot_to_right_sole
     };
+    let left_sole = robot_to_parallel * left_sole_to_robot * Point::origin();
+    let right_sole = robot_to_parallel * right_sole_to_robot * Point::origin();
     (
         Point::from(center_of_mass),
-        Point::from(center_of_mass_rot_ground),
-        Point::from(acceleration_rot_ground),
-        imu_adjusted_robot_to_left_sole.translation.z
-            >= imu_adjusted_robot_to_right_sole.translation.z,
-        imu_adjusted_robot_to_left_sole.translation * Point::origin(), //this is wrong
-        imu_adjusted_robot_to_right_sole.translation * Point::origin(), //this is wrong
-        robot_to_ground.transform_point(&center_of_mass_rot_ground),
+        Point::from(center_of_mass_in_parallel),
+        Point::from(accelerometer_in_parallel),
+        left_sole.z <= right_sole.z,
+        left_sole,
+        right_sole,
+        robot_to_ground * center_of_mass_in_parallel,
     )
 }
