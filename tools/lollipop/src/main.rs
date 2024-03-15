@@ -69,15 +69,15 @@ fn main() -> Result<()> {
             right_fsr_sum(&robot_state),
             0.2,
         );
-        let (
+        let AllTheCalculationsFunctionResult {
             center_of_mass,
             center_of_mass_in_parallel,
             accelerometer_in_parallel,
-            left_is_support,
+            left_is_support_imu,
             left_sole,
             right_sole,
             center_of_mass_in_ground,
-        ) = all_the_calculations_function(&robot_state, left_has_more_pressure);
+        } = all_the_calculations_function(&robot_state, left_has_more_pressure);
         robot_state.received_at = timestamp as f32;
 
         let jsonobject = serde_json::to_value(robot_state).wrap_err("Could not convert to json")?;
@@ -146,7 +146,7 @@ fn main() -> Result<()> {
         values.push(right_sole.x.to_string());
         values.push(right_sole.y.to_string());
         values.push(right_sole.z.to_string());
-        values.push((left_is_support as i8).to_string());
+        values.push((left_is_support_imu as i8).to_string());
         values.push((timestamp - last_timestamp).to_string());
         filewriter.write_record(values)?;
         last_timestamp = timestamp;
@@ -189,18 +189,20 @@ fn right_fsr_sum(robot_state: &RobotState) -> f32 {
         + robot_state.force_sensitive_resistors.right_foot_rear_right
 }
 
+struct AllTheCalculationsFunctionResult {
+    center_of_mass: Point3<f32>,
+    center_of_mass_in_parallel: Point3<f32>,
+    accelerometer_in_parallel: Point3<f32>,
+    left_is_support_imu: bool,
+    left_sole: Point3<f32>,
+    right_sole: Point3<f32>,
+    center_of_mass_in_ground: Point3<f32>,
+}
+
 fn all_the_calculations_function(
     robot_state: &RobotState,
     left_has_more_pressure: bool,
-) -> (
-    Point3<f32>,
-    Point3<f32>,
-    Point3<f32>,
-    bool,
-    Point3<f32>,
-    Point3<f32>,
-    Point3<f32>,
-) {
+) -> AllTheCalculationsFunctionResult {
     let positions = robot_state.position;
     let joints = Joints {
         head: HeadJoints {
@@ -356,13 +358,13 @@ fn all_the_calculations_function(
     };
     let left_sole = robot_to_parallel * left_sole_to_robot * Point::origin();
     let right_sole = robot_to_parallel * right_sole_to_robot * Point::origin();
-    (
-        Point::from(center_of_mass),
-        Point::from(center_of_mass_in_parallel),
-        Point::from(accelerometer_in_parallel),
-        left_sole.z <= right_sole.z,
+    AllTheCalculationsFunctionResult {
+        center_of_mass: Point::from(center_of_mass),
+        center_of_mass_in_parallel: Point::from(center_of_mass_in_parallel),
+        accelerometer_in_parallel: Point::from(accelerometer_in_parallel),
+        left_is_support_imu: left_sole.z <= right_sole.z,
         left_sole,
         right_sole,
-        robot_to_ground * center_of_mass_in_parallel,
-    )
+        center_of_mass_in_ground: robot_to_ground * center_of_mass_in_parallel,
+    }
 }
