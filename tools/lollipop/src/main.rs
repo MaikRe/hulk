@@ -79,8 +79,8 @@ fn main() -> Result<()> {
             left_sole,
             right_sole,
             center_of_mass_in_ground,
-            temp_front_convex_left_sole,
             left_convex_hull,
+            right_convex_hull,
         } = all_the_calculations_function(&robot_state, left_has_more_pressure);
         robot_state.received_at = timestamp as f32;
         // debug!("{}", temp_front_convex_left_sole);
@@ -118,14 +118,16 @@ fn main() -> Result<()> {
             keys.push("right_sole.y".to_string());
             keys.push("right_sole.z".to_string());
             keys.push("left_is_support_imu".to_string());
-            keys.push("left_front_convex.x".to_string());
-            keys.push("left_front_convex.y".to_string());
-            keys.push("left_front_convex.z".to_string());
             keys.push("frame_length".to_string());
             for i in 0..34 {
                 keys.push(format!("left_convex.{}.x", i));
                 keys.push(format!("left_convex.{}.y", i));
                 keys.push(format!("left_convex.{}.z", i));
+            }
+            for i in 0..34 {
+                keys.push(format!("right_convex.{}.x", i));
+                keys.push(format!("right_convex.{}.y", i));
+                keys.push(format!("right_convex.{}.z", i));
             }
             debug!("{:?}", keys);
             filewriter.write_record(keys)?;
@@ -163,11 +165,13 @@ fn main() -> Result<()> {
         values.push(right_sole.y.to_string());
         values.push(right_sole.z.to_string());
         values.push((left_is_support_imu as i8).to_string());
-        values.push(temp_front_convex_left_sole.x.to_string());
-        values.push(temp_front_convex_left_sole.y.to_string());
-        values.push(temp_front_convex_left_sole.z.to_string());
         values.push((timestamp - last_timestamp).to_string());
         for i in left_convex_hull {
+            values.push(i.x.to_string());
+            values.push(i.y.to_string());
+            values.push(i.z.to_string());
+        }
+        for i in right_convex_hull {
             values.push(i.x.to_string());
             values.push(i.y.to_string());
             values.push(i.z.to_string());
@@ -225,8 +229,8 @@ struct AllTheCalculationsFunctionResult {
     left_sole: Point3<f32>,
     right_sole: Point3<f32>,
     center_of_mass_in_ground: Point3<f32>,
-    temp_front_convex_left_sole: Point3<f32>,
     left_convex_hull: Vec<Matrix<f32, Const<3>, Const<1>, ArrayStorage<f32, 3, 1>>>,
+    right_convex_hull: Vec<Matrix<f32, Const<3>, Const<1>, ArrayStorage<f32, 3, 1>>>,
 }
 
 fn all_the_calculations_function(
@@ -392,6 +396,7 @@ fn all_the_calculations_function(
     let right_sole = robot_to_parallel * right_sole_to_robot * Point::origin();
 
     let left_sole_to_robot_in_parallel = robot_to_parallel * left_sole_to_robot;
+    let right_sole_to_robot_in_parallel = robot_to_parallel * right_sole_to_robot;
     // debug!(
     //     "Point in parallel{}",
     //     left_sole_to_robot_in_parallel * point![0.100103, -0.001572, 0.0]
@@ -410,8 +415,8 @@ fn all_the_calculations_function(
     //     "Subtracting the positions{}",
     //     left_sole - (left_sole_to_robot_in_parallel * vector![0.100103, -0.001572, 0.0])
     // );
-    let temp_front_convex_left_sole =
-        ((left_sole_to_robot_in_parallel * point![0.100103, -0.001572, 0.0]) - left_sole).into();
+    // let temp_front_convex_left_sole =
+    //     ((left_sole_to_robot_in_parallel * point![0.100103, -0.001572, 0.0]) - left_sole).into();
 
     //convex hull points of left foot
     let left_convex_hull_points = [
@@ -452,7 +457,15 @@ fn all_the_calculations_function(
     ];
     let left_convex_hull = left_convex_hull_points
         .iter()
-        .map(|point| (left_sole_to_robot_in_parallel * point![point[0], point[1], 0.0]) - left_sole)
+        .map(|point| {
+            (left_sole_to_robot_in_parallel * point![point[0], point[1], 0.0]) - Point::origin()
+        }) //- left_sole
+        .collect::<Vec<_>>();
+    let right_convex_hull = left_convex_hull_points
+        .iter()
+        .map(|point| {
+            (right_sole_to_robot_in_parallel * point![point[0], -point[1], 0.0]) - Point::origin()
+        }) //- right_sole
         .collect::<Vec<_>>();
     // debug!("points:{:?}", temp);
 
@@ -468,7 +481,7 @@ fn all_the_calculations_function(
         left_sole,
         right_sole,
         center_of_mass_in_ground: robot_to_ground * center_of_mass_in_parallel,
-        temp_front_convex_left_sole,
         left_convex_hull,
+        right_convex_hull,
     }
 }
