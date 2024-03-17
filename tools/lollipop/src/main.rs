@@ -125,12 +125,10 @@ fn main() -> Result<()> {
             for i in 0..34 {
                 keys.push(format!("left_convex.{}.x", i));
                 keys.push(format!("left_convex.{}.y", i));
-                keys.push(format!("left_convex.{}.z", i));
             }
             for i in 0..34 {
                 keys.push(format!("right_convex.{}.x", i));
                 keys.push(format!("right_convex.{}.y", i));
-                keys.push(format!("right_convex.{}.z", i));
             }
             debug!("{:?}", keys);
             filewriter.write_record(keys)?;
@@ -172,12 +170,10 @@ fn main() -> Result<()> {
         for i in left_convex_hull {
             values.push(i.x.to_string());
             values.push(i.y.to_string());
-            values.push(i.z.to_string());
         }
         for i in right_convex_hull {
             values.push(i.x.to_string());
             values.push(i.y.to_string());
-            values.push(i.z.to_string());
         }
 
         //TODO add check for falling of robot which will potentially remove this frame plus before and after from data
@@ -232,8 +228,8 @@ struct AllTheCalculationsFunctionResult {
     left_sole: Point3<f32>,
     right_sole: Point3<f32>,
     center_of_mass_in_ground: Point3<f32>,
-    left_convex_hull: Vec<Matrix<f32, Const<3>, Const<1>, ArrayStorage<f32, 3, 1>>>,
-    right_convex_hull: Vec<Matrix<f32, Const<3>, Const<1>, ArrayStorage<f32, 3, 1>>>,
+    left_convex_hull: Vec<OPoint<f32, Const<2>>>,
+    right_convex_hull: Vec<OPoint<f32, Const<2>>>,
     convex_hull_2d: Vec<OPoint<f32, Const<2>>>,
 }
 
@@ -463,13 +459,15 @@ fn all_the_calculations_function(
         .iter()
         .map(|point| {
             (left_sole_to_robot_in_parallel * point![point[0], point[1], 0.0]) - Point::origin()
-        }) //- left_sole
+        })
+        .map(|point| point![point.x, point.y])
         .collect::<Vec<_>>();
     let right_convex_hull = left_convex_hull_points
         .iter()
         .map(|point| {
             (right_sole_to_robot_in_parallel * point![point[0], -point[1], 0.0]) - Point::origin()
-        }) //- right_sole
+        })
+        .map(|point| point![point.x, point.y])
         .collect::<Vec<_>>();
     // debug!("points:{:?}", temp);
 
@@ -487,6 +485,7 @@ fn all_the_calculations_function(
         .copied()
         .map(|point| point![point[0], point[1]])
         .collect::<Vec<_>>();
+
     // let temp = convex_hull_2d
     //     .iter()
     //     .max_by(|a, b| (a.x).partial_cmp(&b.x).unwrap())
