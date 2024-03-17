@@ -82,6 +82,8 @@ fn main() -> Result<()> {
             right_convex_hull,
             left_hull_index,
             right_hull_index,
+            x_zero_moment_point_in_parallel,
+            y_zero_moment_point_in_parallel,
         } = all_the_calculations_function(&robot_state, left_has_more_pressure);
         robot_state.received_at = timestamp as f32;
         // debug!("{}", temp_front_convex_left_sole);
@@ -134,6 +136,8 @@ fn main() -> Result<()> {
             for i in 0..34 {
                 keys.push(format!("right_hull_index.{}", i));
             }
+            keys.push("x_zero_moment_point_in_parallel".to_string());
+            keys.push("y_zero_moment_point_in_parallel".to_string());
             debug!("{:?}", keys);
             filewriter.write_record(keys)?;
             header = false;
@@ -185,6 +189,8 @@ fn main() -> Result<()> {
         for i in right_hull_index {
             values.push((i as i8).to_string());
         }
+        values.push(x_zero_moment_point_in_parallel.to_string());
+        values.push(y_zero_moment_point_in_parallel.to_string());
 
         //TODO add check for falling of robot which will potentially remove this frame plus before and after from data
 
@@ -243,6 +249,8 @@ struct AllTheCalculationsFunctionResult {
     right_convex_hull: Vec<OPoint<f32, Const<2>>>,
     left_hull_index: Vec<bool>,
     right_hull_index: Vec<bool>,
+    x_zero_moment_point_in_parallel: f32,
+    y_zero_moment_point_in_parallel: f32,
 }
 
 fn all_the_calculations_function(
@@ -483,6 +491,7 @@ fn all_the_calculations_function(
         .collect::<Vec<_>>();
     // debug!("points:{:?}", temp);
 
+    //Convex hull calculations
     let mut union_convex_hull = left_convex_hull.clone();
     let mut right_convex_hull_clone = right_convex_hull.clone();
     union_convex_hull.append(&mut right_convex_hull_clone);
@@ -505,14 +514,23 @@ fn all_the_calculations_function(
         .iter()
         .map(|point| convex_hull_2d.contains(point))
         .collect::<Vec<_>>();
-    // let temp = convex_hull_2d
-    //     .iter()
-    //     .max_by(|a, b| (a.x).partial_cmp(&b.x).unwrap())
-    //     .unwrap();
-    let _support_polygon_front = f32::max(right_sole.x, left_sole.x) + 0.1003;
-    let _support_polygon_back = f32::min(right_sole.x, left_sole.x) - 0.0546;
-    let _support_polygon_left = left_sole.y + 0.051719;
-    let _support_polygon_right = right_sole.y - 0.051719;
+
+    //Zero Moment Point
+    let z_foot_to_parallel = if left_has_more_pressure {
+        -left_sole.z
+    } else {
+        -right_sole.z
+    };
+    let z = center_of_mass_in_parallel.z - z_foot_to_parallel;
+    let x_com = center_of_mass_in_parallel.x;
+    let y_com = center_of_mass_in_parallel.y;
+    let x_hat = accelerometer_in_parallel.x;
+    let y_hat = accelerometer_in_parallel.y;
+    let g = 9.80665;
+
+    let x_zero_moment_point_in_parallel = ((x_com * g) + (x_hat * z)) / g;
+    let y_zero_moment_point_in_parallel = ((y_com * g) + (y_hat * z)) / g;
+
     AllTheCalculationsFunctionResult {
         center_of_mass: Point::from(center_of_mass),
         center_of_mass_in_parallel: Point::from(center_of_mass_in_parallel),
@@ -525,5 +543,7 @@ fn all_the_calculations_function(
         right_convex_hull,
         left_hull_index,
         right_hull_index,
+        x_zero_moment_point_in_parallel,
+        y_zero_moment_point_in_parallel,
     }
 }
