@@ -14,10 +14,7 @@ use kinematics::{
     right_upper_arm_to_right_shoulder, right_wrist_to_right_forearm,
 };
 use log::{debug, LevelFilter};
-use nalgebra::{
-    point, vector, ArrayStorage, Const, Isometry3, Matrix, OPoint, Point, Point3, Translation,
-    Vector3,
-};
+use nalgebra::{point, vector, Const, Isometry3, OPoint, Point, Point3, Translation, Vector3};
 
 use rmp_serde::from_slice;
 use std::{fs::File, io::Read, path::PathBuf};
@@ -83,7 +80,8 @@ fn main() -> Result<()> {
             center_of_mass_in_ground,
             left_convex_hull,
             right_convex_hull,
-            convex_hull_2d,
+            left_hull_index,
+            right_hull_index,
         } = all_the_calculations_function(&robot_state, left_has_more_pressure);
         robot_state.received_at = timestamp as f32;
         // debug!("{}", temp_front_convex_left_sole);
@@ -130,6 +128,12 @@ fn main() -> Result<()> {
                 keys.push(format!("right_convex.{}.x", i));
                 keys.push(format!("right_convex.{}.y", i));
             }
+            for i in 0..34 {
+                keys.push(format!("left_hull_index.{}", i));
+            }
+            for i in 0..34 {
+                keys.push(format!("right_hull_index.{}", i));
+            }
             debug!("{:?}", keys);
             filewriter.write_record(keys)?;
             header = false;
@@ -175,11 +179,18 @@ fn main() -> Result<()> {
             values.push(i.x.to_string());
             values.push(i.y.to_string());
         }
+        for i in left_hull_index {
+            values.push((i as i8).to_string());
+        }
+        for i in right_hull_index {
+            values.push((i as i8).to_string());
+        }
 
         //TODO add check for falling of robot which will potentially remove this frame plus before and after from data
 
         //write values
         filewriter.write_record(values)?;
+        debug!("{}", timestamp);
         last_timestamp = timestamp;
     }
 
@@ -230,7 +241,8 @@ struct AllTheCalculationsFunctionResult {
     center_of_mass_in_ground: Point3<f32>,
     left_convex_hull: Vec<OPoint<f32, Const<2>>>,
     right_convex_hull: Vec<OPoint<f32, Const<2>>>,
-    convex_hull_2d: Vec<OPoint<f32, Const<2>>>,
+    left_hull_index: Vec<bool>,
+    right_hull_index: Vec<bool>,
 }
 
 fn all_the_calculations_function(
@@ -478,14 +490,21 @@ fn all_the_calculations_function(
         .iter()
         .map(|point| ncollide2d::na::Point2::new(point.x, point.y))
         .collect::<Vec<_>>();
-    let convex_hull_2d = ncollide2d::shape::ConvexPolygon::try_new(convex_hull_2d_points)
+    let convex_hull_2d = ncollide2d::transformation::convex_hull(&convex_hull_2d_points)
         .unwrap()
-        .points()
+        .0
         .iter()
-        .copied()
         .map(|point| point![point[0], point[1]])
-        .collect::<Vec<_>>();
+        .collect::<Vec<_>>(); //known issue here as last frame is passed with no data, needs to be fixed in while loop
 
+    let left_hull_index = left_convex_hull
+        .iter()
+        .map(|point| convex_hull_2d.contains(point))
+        .collect::<Vec<_>>();
+    let right_hull_index = right_convex_hull
+        .iter()
+        .map(|point| convex_hull_2d.contains(point))
+        .collect::<Vec<_>>();
     // let temp = convex_hull_2d
     //     .iter()
     //     .max_by(|a, b| (a.x).partial_cmp(&b.x).unwrap())
@@ -504,6 +523,7 @@ fn all_the_calculations_function(
         center_of_mass_in_ground: robot_to_ground * center_of_mass_in_parallel,
         left_convex_hull,
         right_convex_hull,
-        convex_hull_2d,
+        left_hull_index,
+        right_hull_index,
     }
 }
