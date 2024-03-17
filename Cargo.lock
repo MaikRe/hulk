@@ -722,7 +722,7 @@ dependencies = [
  "ittapi",
  "log",
  "mlua",
- "nalgebra",
+ "nalgebra 0.32.3",
  "parameters",
  "parking_lot",
  "serde",
@@ -952,7 +952,7 @@ name = "calibration"
 version = "0.1.0"
 dependencies = [
  "levenberg-marquardt",
- "nalgebra",
+ "nalgebra 0.32.3",
  "projection",
  "thiserror",
  "types",
@@ -977,7 +977,7 @@ name = "camera_matrix_extractor"
 version = "0.1.0"
 dependencies = [
  "color-eyre",
- "nalgebra",
+ "nalgebra 0.32.3",
  "serde",
  "serde_json",
  "structopt",
@@ -1373,7 +1373,7 @@ dependencies = [
  "kinematics",
  "log",
  "motionfile",
- "nalgebra",
+ "nalgebra 0.32.3",
  "num-traits",
  "ordered-float",
  "projection",
@@ -1399,7 +1399,7 @@ name = "coordinate_systems"
 version = "0.1.0"
 dependencies = [
  "geometry",
- "nalgebra",
+ "nalgebra 0.32.3",
 ]
 
 [[package]]
@@ -2203,7 +2203,7 @@ name = "filtering"
 version = "0.1.0"
 dependencies = [
  "approx",
- "nalgebra",
+ "nalgebra 0.32.3",
  "rand",
  "rand_distr",
  "serde",
@@ -2403,7 +2403,7 @@ name = "geometry"
 version = "0.1.0"
 dependencies = [
  "approx",
- "nalgebra",
+ "nalgebra 0.32.3",
  "serde",
  "serialize_hierarchy",
 ]
@@ -2755,7 +2755,7 @@ dependencies = [
  "geometry",
  "hardware",
  "ittapi",
- "nalgebra",
+ "nalgebra 0.32.3",
  "serde",
  "serialize_hierarchy",
  "source_analyzer",
@@ -2783,7 +2783,7 @@ dependencies = [
  "hulk",
  "libc",
  "log",
- "nalgebra",
+ "nalgebra 0.32.3",
  "nao_camera",
  "opusfile-ng",
  "parking_lot",
@@ -2807,7 +2807,7 @@ dependencies = [
  "hardware",
  "hulk",
  "log",
- "nalgebra",
+ "nalgebra 0.32.3",
  "parking_lot",
  "rand",
  "serde",
@@ -3128,7 +3128,7 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 name = "kinematics"
 version = "0.1.0"
 dependencies = [
- "nalgebra",
+ "nalgebra 0.32.3",
  "types",
 ]
 
@@ -3157,7 +3157,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1204bd21e2f239566fdebafcab83adfd0b8cb0977bb43e09abfe18041d48ad8"
 dependencies = [
  "cfg-if",
- "nalgebra",
+ "nalgebra 0.32.3",
  "num-traits",
  "rustc_version",
 ]
@@ -3263,7 +3263,7 @@ dependencies = [
  "communication",
  "control",
  "framework",
- "nalgebra",
+ "nalgebra 0.32.3",
  "serde",
  "serialize_hierarchy",
  "tokio",
@@ -3299,7 +3299,8 @@ dependencies = [
  "hula-types",
  "kinematics",
  "log",
- "nalgebra",
+ "nalgebra 0.32.3",
+ "ncollide2d",
  "polars",
  "rmp-serde",
  "serde_json",
@@ -3504,19 +3505,46 @@ dependencies = [
 
 [[package]]
 name = "nalgebra"
+version = "0.30.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fb2d0de08694bed883320212c18ee3008576bfe8c306f4c3c4a58b4876998be"
+dependencies = [
+ "approx",
+ "matrixmultiply",
+ "nalgebra-macros 0.1.0",
+ "num-complex",
+ "num-rational",
+ "num-traits",
+ "simba 0.7.3",
+ "typenum",
+]
+
+[[package]]
+name = "nalgebra"
 version = "0.32.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "307ed9b18cc2423f29e83f84fd23a8e73628727990181f18641a8b5dc2ab1caa"
 dependencies = [
  "approx",
  "matrixmultiply",
- "nalgebra-macros",
+ "nalgebra-macros 0.2.1",
  "num-complex",
  "num-rational",
  "num-traits",
  "serde",
- "simba",
+ "simba 0.8.1",
  "typenum",
+]
+
+[[package]]
+name = "nalgebra-macros"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01fcc0b8149b4632adc89ac3b7b31a12fb6099a0317a4eb2ebff574ef7de7218"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -3567,6 +3595,25 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
+]
+
+[[package]]
+name = "ncollide2d"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7b482abe7a18b69951d43dda8e0e978503e4e62af745c71eafdf8d52033d537"
+dependencies = [
+ "approx",
+ "bitflags 1.3.2",
+ "downcast-rs",
+ "either",
+ "nalgebra 0.30.1",
+ "num-traits",
+ "petgraph",
+ "simba 0.7.3",
+ "slab",
+ "slotmap",
+ "smallvec",
 ]
 
 [[package]]
@@ -4597,7 +4644,7 @@ name = "projection"
 version = "0.1.0"
 dependencies = [
  "approx",
- "nalgebra",
+ "nalgebra 0.32.3",
  "thiserror",
  "types",
 ]
@@ -5119,7 +5166,7 @@ name = "serialize_hierarchy"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "nalgebra",
+ "nalgebra 0.32.3",
  "serde",
  "serde_json",
  "serialize_hierarchy_derive",
@@ -5175,6 +5222,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8229b473baa5980ac72ef434c4415e70c4b5e71b423043adb4ba059f89c99a1"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "simba"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f3fd720c48c53cace224ae62bef1bbff363a70c68c4802a78b5cc6159618176"
+dependencies = [
+ "approx",
+ "num-complex",
+ "num-traits",
+ "paste",
+ "wide",
 ]
 
 [[package]]
@@ -5333,7 +5393,7 @@ dependencies = [
  "bincode",
  "bindgen 0.65.1",
  "color-eyre",
- "nalgebra",
+ "nalgebra 0.32.3",
  "num-derive 0.3.3",
  "num-traits",
  "serde",
@@ -5924,7 +5984,7 @@ dependencies = [
  "itertools",
  "log",
  "mlua",
- "nalgebra",
+ "nalgebra 0.32.3",
  "parameters",
  "projection",
  "repository",
@@ -5951,7 +6011,7 @@ dependencies = [
  "enum-iterator",
  "geometry",
  "image",
- "nalgebra",
+ "nalgebra 0.32.3",
  "ordered-float",
  "petgraph",
  "proc-macro2",
@@ -6085,7 +6145,7 @@ dependencies = [
  "geometry",
  "hardware",
  "itertools",
- "nalgebra",
+ "nalgebra 0.32.3",
  "ordered-float",
  "projection",
  "rand",

@@ -15,8 +15,10 @@ use kinematics::{
 };
 use log::{debug, LevelFilter};
 use nalgebra::{
-    point, vector, ArrayStorage, Const, Isometry3, Matrix, Point, Point3, Translation, Vector3,
+    point, vector, ArrayStorage, Const, Isometry3, Matrix, OPoint, Point, Point3, Translation,
+    Vector3,
 };
+
 use rmp_serde::from_slice;
 use std::{fs::File, io::Read, path::PathBuf};
 use types::{
@@ -81,6 +83,7 @@ fn main() -> Result<()> {
             center_of_mass_in_ground,
             left_convex_hull,
             right_convex_hull,
+            convex_hull_2d,
         } = all_the_calculations_function(&robot_state, left_has_more_pressure);
         robot_state.received_at = timestamp as f32;
         // debug!("{}", temp_front_convex_left_sole);
@@ -231,6 +234,7 @@ struct AllTheCalculationsFunctionResult {
     center_of_mass_in_ground: Point3<f32>,
     left_convex_hull: Vec<Matrix<f32, Const<3>, Const<1>, ArrayStorage<f32, 3, 1>>>,
     right_convex_hull: Vec<Matrix<f32, Const<3>, Const<1>, ArrayStorage<f32, 3, 1>>>,
+    convex_hull_2d: Vec<OPoint<f32, Const<2>>>,
 }
 
 fn all_the_calculations_function(
@@ -469,6 +473,24 @@ fn all_the_calculations_function(
         .collect::<Vec<_>>();
     // debug!("points:{:?}", temp);
 
+    let mut union_convex_hull = left_convex_hull.clone();
+    let mut right_convex_hull_clone = right_convex_hull.clone();
+    union_convex_hull.append(&mut right_convex_hull_clone);
+    let convex_hull_2d_points = union_convex_hull
+        .iter()
+        .map(|point| ncollide2d::na::Point2::new(point.x, point.y))
+        .collect::<Vec<_>>();
+    let convex_hull_2d = ncollide2d::shape::ConvexPolygon::try_new(convex_hull_2d_points)
+        .unwrap()
+        .points()
+        .iter()
+        .copied()
+        .map(|point| point![point[0], point[1]])
+        .collect::<Vec<_>>();
+    // let temp = convex_hull_2d
+    //     .iter()
+    //     .max_by(|a, b| (a.x).partial_cmp(&b.x).unwrap())
+    //     .unwrap();
     let _support_polygon_front = f32::max(right_sole.x, left_sole.x) + 0.1003;
     let _support_polygon_back = f32::min(right_sole.x, left_sole.x) - 0.0546;
     let _support_polygon_left = left_sole.y + 0.051719;
@@ -483,5 +505,6 @@ fn all_the_calculations_function(
         center_of_mass_in_ground: robot_to_ground * center_of_mass_in_parallel,
         left_convex_hull,
         right_convex_hull,
+        convex_hull_2d,
     }
 }

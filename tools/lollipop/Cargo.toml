@@ -19,3 +19,4 @@ serde_json = { workspace = true }
 types = { workspace = true }
 nalgebra = { workspace = true }
 kinematics = { workspace = true }
+ncollide2d = "0.33"
