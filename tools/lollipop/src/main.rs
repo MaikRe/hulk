@@ -122,18 +122,18 @@ fn main() -> Result<()> {
             keys.push("right_sole.z".to_string());
             keys.push("left_is_support_imu".to_string());
             keys.push("frame_length".to_string());
-            for i in 0..34 {
+            for i in 0..33 {
                 keys.push(format!("left_convex.{}.x", i));
                 keys.push(format!("left_convex.{}.y", i));
             }
-            for i in 0..34 {
+            for i in 0..33 {
                 keys.push(format!("right_convex.{}.x", i));
                 keys.push(format!("right_convex.{}.y", i));
             }
-            for i in 0..34 {
+            for i in 0..33 {
                 keys.push(format!("left_hull_index.{}", i));
             }
-            for i in 0..34 {
+            for i in 0..33 {
                 keys.push(format!("right_hull_index.{}", i));
             }
             keys.push("x_zero_moment_point_in_parallel".to_string());
@@ -469,7 +469,6 @@ fn all_the_calculations_function(
         [0.057212, 0.047683],
         [0.049916, 0.048183],
         [-0.031242, 0.051719],
-        [-0.031248, 0.051719],
         [-0.03593, 0.049621],
         [-0.040999, 0.045959],
         [-0.045156, 0.042039],
