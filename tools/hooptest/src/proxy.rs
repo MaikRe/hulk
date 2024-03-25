@@ -37,17 +37,13 @@ fn wait_for_lola() -> Result<UnixStream> {
 }
 
 pub struct Proxy {
-    lola: UnixStream,
     hula_passthrough: UnixListener,
     epoll_fd: RawFd,
-    lola_file: File,
-    hula_file: File,
+    connections: HashMap<RawFd, Connection>,
 }
 
 impl Proxy {
     pub fn initialize() -> Result<Self> {
-        let lola = wait_for_lola().wrap_err("failed to connect to LoLA")?;
-        rename(LOLA_SOCKET_PATH, MOVED_SOCKET_PATH).wrap_err("Failed to yoink robocup file")?;
         remove_file(LOLA_SOCKET_PATH)
             .or_else(|error| match error.kind() {
                 ErrorKind::NotFound => Ok(()),
@@ -60,78 +56,73 @@ impl Proxy {
 
         let epoll_fd =
             epoll::create(false).wrap_err("passthrough failed to create epoll file descriptor")?;
-        add_to_epoll(epoll_fd, lola.as_raw_fd())
-            .wrap_err("passthrough failed to register LoLA file descriptor in epoll")?;
         add_to_epoll(epoll_fd, hula_passthrough.as_raw_fd())
             .wrap_err("passthrough failed to register hula file descriptor in epoll")?;
         let timestamp = Local::now().format("%Y_%m_%d_%H_%M_%S");
-        let lola_file = File::create(format!(
-            "/home/maik/loladelay/lola_to_hula_passthrough.{}",
-            timestamp
-        ))
-        .wrap_err("Failed to create log file of lola messages")?;
-        let hula_file = File::create(format!(
-            "/home/maik/loladelay/hula_to_lola_passthrough.{}",
-            timestamp
-        ))
-        .wrap_err("Failed to create log file of hula messages")?;
+        let mut connections = HashMap::new();
         Ok(Self {
-            lola,
             hula_passthrough,
             epoll_fd,
-            lola_file,
-            hula_file,
+            connections,
         })
     }
-    pub fn run(mut self) -> Result<()> {
+    pub fn run(&mut self) -> Result<()> {
         let proxy_start = Instant::now();
-        let mut connections = HashMap::new();
         let mut events = [Event::new(Events::empty(), 0); 16];
         debug!("Entering epoll loop...");
-        let mut micros = 0;
-        let mut count = 0;
+        let mut connected = false;
         loop {
             let number_of_events = epoll::wait(self.epoll_fd, NO_EPOLL_TIMEOUT, &mut events)
                 .wrap_err("failed to wait for epoll")?;
             let tik = proxy_start.elapsed().as_micros();
             for event in &events[0..number_of_events] {
                 let notified_fd = event.data as i32;
-                if notified_fd == self.lola.as_raw_fd() {
-                    handle_lola_event(
-                        &mut self.lola,
-                        &mut connections,
-                        proxy_start,
-                        &mut self.lola_file,
-                    )?;
-                    micros += proxy_start.elapsed().as_micros() - tik;
-                    count += 1;
-                } else if notified_fd == self.hula_passthrough.as_raw_fd() {
+                if notified_fd == self.hula_passthrough.as_raw_fd() {
                     register_connection(
                         &mut self.hula_passthrough,
-                        &mut connections,
+                        &mut self.connections,
                         self.epoll_fd,
                     )?;
-                    count = 0;
-                    micros = 0;
+                    connected = true;
                 } else {
-                    handle_connection_event(
-                        &mut connections,
-                        notified_fd,
-                        &mut self.lola,
-                        proxy_start,
-                        &mut self.hula_file,
-                    )?;
-                    count = 0;
-                    micros = 0;
+                    handle_connection_event(&mut self.connections, notified_fd, proxy_start)?;
                 }
             }
-            if count % 1000 == 0{
-                info!{"{}",count};
-                info!{"{}",micros/count};
+            if connected {
+                info!("Broke loop");
+                return Ok(());
             }
         }
     }
+    pub fn test(mut self) {
+        sleep(Duration::from_secs(5));
+        let mut lola_data: [u8; 896] = [0; BUFF_SIZE];
+        let test = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB".as_bytes();
+        let mut frame_now = Instant::now();
+        let frame_length = Duration::from_millis(12);
+        for _i in 0..10000 {
+            if self.connections.is_empty() {
+                debug!("Finished handling lola event due to no connections");
+                return;
+            }
+            self.connections.retain(|_, connection| {
+                if let Err(error) = connection.socket.write_all(&test) {
+                    error!("Failed to write StateStorage to connection: {error}");
+                    return false;
+                }
+                if let Err(error) = connection.socket.flush() {
+                    error!("Failed to flush connection: {error}");
+                    return false;
+                }
+                debug!("Finished handling lola event through connection retain");
+                true
+            });
+            frame_now += frame_length;
+            sleep(frame_now - Instant::now());
+        }
+    }
 }
+
 struct Connection {
     socket: UnixStream,
 }
@@ -139,18 +130,11 @@ fn handle_lola_event(
     lola: &mut UnixStream,
     connections: &mut HashMap<RawFd, Connection>,
     proxy_start: Instant,
-    lola_file: &mut File,
 ) -> Result<()> {
     let since_start = proxy_start.elapsed().as_millis();
     let mut lola_data = [0; BUFF_SIZE];
     lola.read_exact(&mut lola_data)
         .wrap_err("failed to read from LoLA socket")?;
-    lola_file
-        .write_all(&(since_start.to_be_bytes()))
-        .wrap_err("Could not write timestamp to lola file")?;
-    lola_file
-        .write_all(&lola_data)
-        .wrap_err("Could not write data to lola file")?;
     if connections.is_empty() {
         debug!("Finished handling lola event due to no connections");
         return Ok(());
@@ -197,9 +181,7 @@ fn register_connection(
 fn handle_connection_event(
     connections: &mut HashMap<RawFd, Connection>,
     notified_fd: RawFd,
-    lola: &mut UnixStream,
     proxy_start: Instant,
-    hula_file: &mut File,
 ) -> Result<()> {
     match connections.get_mut(&notified_fd) {
         Some(connection) => {
@@ -214,15 +196,7 @@ fn handle_connection_event(
                     .expect("connection file descriptor has to be registered");
                 return Ok(());
             };
-            lola.write_all(&read_buffer)
-                .wrap_err("Could not forward message from hula to lola")?;
             let since_start = proxy_start.elapsed().as_millis();
-            hula_file
-                .write_all(&(since_start.to_be_bytes()))
-                .wrap_err("Could not write timestamp to hula file")?;
-            hula_file
-                .write_all(&read_buffer)
-                .wrap_err("Could not write data to hula file")?;
         }
         None => warn!(
             "Connection with file descriptor {} does not exist",

@@ -1,0 +1,22 @@
+[Unit]
+Description=HULAHoop Service
+Requires=dbus.socket lola.service
+After=dbus.socket lola.service
+
+[Service]
+ExecStart=/home/nao/hulahoop
+ExecStartPre=systemctl stop hulk.service ; systemctl stop hula.service
+ExecStartPost=systemctl start hula.service ; systemctl start hulk.service
+ExecStopPost=-/bin/rm /tmp/robocup ; -/bin/rm /tmp/robocup_moved ; systemctl restart hal.service ; systemctl restart lola.service ; systemctl start hula.service ; systemctl start hulk.service
+Restart=no
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=10
+TimeoutStopSec=10
+StandardOutput=journal
+Type=notify
+NotifyAccess=main
+User=nao
+Group=nao
+
+[Install]
+WantedBy=default.target

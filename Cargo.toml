@@ -44,7 +44,7 @@ members = [
   "tools/lollipop"
 ]
 # HuLA and Aliveness are built independently by yocto
-exclude = ["tools/aliveness", "tools/breeze", "tools/hula", "tools/hulahoop"]
+exclude = ["tools/aliveness", "tools/breeze", "tools/hula", "tools/hulahoop", "tools/hooptest"]
 
 [workspace.package]
 version = "0.1.0"
