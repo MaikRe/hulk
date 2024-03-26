@@ -489,7 +489,6 @@ fn all_the_calculations_function(
         .map(|point| point![point.x, point.y])
         .collect::<Vec<_>>();
     // debug!("points:{:?}", temp);
-
     //Convex hull calculations
     let mut union_convex_hull = left_convex_hull.clone();
     let mut right_convex_hull_clone = right_convex_hull.clone();
@@ -515,10 +514,28 @@ fn all_the_calculations_function(
         .collect::<Vec<_>>();
 
     //Zero Moment Point
+
+    let left_contact_point = left_convex_hull_points
+        .iter()
+        .map(|point| {
+            (left_sole_to_robot_in_parallel * point![point[0], point[1], 0.0]) - Point::origin()
+        })
+        .map(|point| point.z)
+        .min_by(|x, y| x.abs().partial_cmp(&y.abs()).unwrap())
+        .unwrap();
+    let right_contact_point = left_convex_hull_points
+        .iter()
+        .map(|point| {
+            (right_sole_to_robot_in_parallel * point![point[0], -point[1], 0.0]) - Point::origin()
+        })
+        .map(|point| point.z)
+        .min_by(|x, y| x.abs().partial_cmp(&y.abs()).unwrap())
+        .unwrap();
+
     let z_foot_to_parallel = if left_has_more_pressure {
-        -left_sole.z
+        -left_contact_point
     } else {
-        -right_sole.z
+        -right_contact_point
     };
     let z = center_of_mass_in_parallel.z - z_foot_to_parallel;
     let x_com = center_of_mass_in_parallel.x;
