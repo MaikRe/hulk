@@ -89,6 +89,9 @@ fn main() -> Result<()> {
         // debug!("{}", temp_front_convex_left_sole);
 
         let jsonobject = serde_json::to_value(robot_state).wrap_err("Could not convert to json")?;
+        // if timestamp == 59614_u128 {
+        //     info!("{:?}", jsonobject);
+        // }
         let output = flattener
             .flatten(&jsonobject)
             .wrap_err("Failed to flatten")?;
