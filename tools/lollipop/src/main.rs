@@ -56,6 +56,8 @@ fn main() -> Result<()> {
 
     let flattener = Flattener::new().set_key_separator(".");
     let mut left_has_more_pressure = false;
+    let mut left_has_pressure = false;
+    let mut right_has_pressure = false;
     let mut header = true;
     let mut last_timestamp = 0;
     while let Ok(()) = file.read_exact(&mut timestamp_buf) {
@@ -69,6 +71,18 @@ fn main() -> Result<()> {
             left_fsr_sum(&robot_state),
             right_fsr_sum(&robot_state),
             0.2,
+        );
+        left_has_pressure = greater_than_with_hysteresis(
+            left_has_pressure,
+            left_fsr_sum(&robot_state),
+            0.6,
+            0.3,
+        );
+        right_has_pressure = greater_than_with_hysteresis(
+            right_has_pressure,
+            right_fsr_sum(&robot_state),
+            0.6,
+            0.3,
         );
         let AllTheCalculationsFunctionResult {
             center_of_mass,
@@ -141,6 +155,8 @@ fn main() -> Result<()> {
             }
             keys.push("x_zero_moment_point_in_parallel".to_string());
             keys.push("y_zero_moment_point_in_parallel".to_string());
+            keys.push("left_has_pressure".to_string());
+            keys.push("right_has_pressure".to_string());
             debug!("{:?}", keys);
             filewriter.write_record(keys)?;
             header = false;
@@ -194,7 +210,8 @@ fn main() -> Result<()> {
         }
         values.push(x_zero_moment_point_in_parallel.to_string());
         values.push(y_zero_moment_point_in_parallel.to_string());
-
+        values.push((left_has_pressure as i8).to_string());
+        values.push((right_has_pressure as i8).to_string());
         //TODO add check for falling of robot which will potentially remove this frame plus before and after from data
 
         //write values
