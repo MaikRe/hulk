@@ -14,7 +14,9 @@ use kinematics::{
     right_upper_arm_to_right_shoulder, right_wrist_to_right_forearm,
 };
 use log::{debug, LevelFilter};
-use nalgebra::{point, vector, Const, Isometry3, OPoint, Point, Point3, Translation, Vector3};
+use nalgebra::{
+    point, vector, Const, Isometry3, OPoint, Point, Point3, Translation, Vector, Vector3,
+};
 
 use rmp_serde::from_slice;
 use std::{fs::File, io::Read, path::PathBuf};
@@ -72,18 +74,10 @@ fn main() -> Result<()> {
             right_fsr_sum(&robot_state),
             0.2,
         );
-        left_has_pressure = greater_than_with_hysteresis(
-            left_has_pressure,
-            left_fsr_sum(&robot_state),
-            0.6,
-            0.3,
-        );
-        right_has_pressure = greater_than_with_hysteresis(
-            right_has_pressure,
-            right_fsr_sum(&robot_state),
-            0.6,
-            0.3,
-        );
+        left_has_pressure =
+            greater_than_with_hysteresis(left_has_pressure, left_fsr_sum(&robot_state), 0.6, 0.3);
+        right_has_pressure =
+            greater_than_with_hysteresis(right_has_pressure, right_fsr_sum(&robot_state), 0.6, 0.3);
         let AllTheCalculationsFunctionResult {
             center_of_mass,
             center_of_mass_in_parallel,
@@ -98,6 +92,8 @@ fn main() -> Result<()> {
             right_hull_index,
             x_zero_moment_point_in_parallel,
             y_zero_moment_point_in_parallel,
+            z_camera,
+            y_camera,
         } = all_the_calculations_function(&robot_state, left_has_more_pressure);
         robot_state.received_at = timestamp as f32;
         // debug!("{}", temp_front_convex_left_sole);
@@ -157,6 +153,8 @@ fn main() -> Result<()> {
             keys.push("y_zero_moment_point_in_parallel".to_string());
             keys.push("left_has_pressure".to_string());
             keys.push("right_has_pressure".to_string());
+            keys.push("z_camera".to_string());
+            keys.push("y_camera".to_string());
             debug!("{:?}", keys);
             filewriter.write_record(keys)?;
             header = false;
@@ -212,7 +210,8 @@ fn main() -> Result<()> {
         values.push(y_zero_moment_point_in_parallel.to_string());
         values.push((left_has_pressure as i8).to_string());
         values.push((right_has_pressure as i8).to_string());
-        //TODO add check for falling of robot which will potentially remove this frame plus before and after from data
+        values.push(z_camera.to_string());
+        values.push(y_camera.to_string());
 
         //write values
         filewriter.write_record(values)?;
@@ -271,6 +270,8 @@ struct AllTheCalculationsFunctionResult {
     right_hull_index: Vec<bool>,
     x_zero_moment_point_in_parallel: f32,
     y_zero_moment_point_in_parallel: f32,
+    z_camera: f32,
+    y_camera: f32,
 }
 
 fn all_the_calculations_function(
@@ -567,6 +568,11 @@ fn all_the_calculations_function(
     let x_zero_moment_point_in_parallel = ((x_com * g) + (x_hat * z)) / g;
     let y_zero_moment_point_in_parallel = ((y_com * g) + (y_hat * z)) / g;
 
+    let g_robot = robot_to_parallel.inverse() * Vector::z() * -g;
+
+    let z_camera = robot_state.inertial_measurement_unit.accelerometer.z - g_robot.z;
+    let y_camera = robot_state.inertial_measurement_unit.accelerometer.y - g_robot.y;
+
     AllTheCalculationsFunctionResult {
         center_of_mass: Point::from(center_of_mass),
         center_of_mass_in_parallel: Point::from(center_of_mass_in_parallel),
@@ -581,5 +587,7 @@ fn all_the_calculations_function(
         right_hull_index,
         x_zero_moment_point_in_parallel,
         y_zero_moment_point_in_parallel,
+        z_camera,
+        y_camera,
     }
 }
