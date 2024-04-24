@@ -634,7 +634,7 @@
         "side": "Left"
       },
       "seven": {
-        "center_line_offset_x": -1.0,
+        "center_line_offset_x": 1.0,
         "side": "Right"
       }
     },
