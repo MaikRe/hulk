@@ -12,7 +12,7 @@ use framework::{MainOutput, PerceptionInput};
 use hardware::NetworkInterface;
 use linear_algebra::{Isometry2, Point2, Vector};
 use spl_network_messages::{
-    GameControllerReturnMessage, GamePhase, HulkMessage, Penalty, PlayerNumber, SubState, Team,
+    GameControllerReturnMessage, GamePhase, HulkMessage, Penalty, JerseyNumber, SubState, Team,
 };
 use types::{
     ball_position::BallPosition,
@@ -63,7 +63,7 @@ pub struct CycleContext {
         Parameter<Duration, "role_assignment.keeper_replacementkeeper_switch_time">,
     initial_poses: Parameter<Players<InitialPose>, "localization.initial_poses">,
     optional_roles: Parameter<Vec<Role>, "behavior.optional_roles">,
-    player_number: Parameter<PlayerNumber, "player_number">,
+    jersey_number: Parameter<JerseyNumber, "jersey_number">,
     spl_network: Parameter<SplNetworkParameters, "spl_network">,
 
     hardware: HardwareInterface,
@@ -109,7 +109,7 @@ impl RoleAssignment {
                 .copied()
                 .unwrap_or_else(|| match context.primary_state {
                     PrimaryState::Initial => generate_initial_pose(
-                        &context.initial_poses[*context.player_number],
+                        &context.initial_poses[*context.jersey_number],
                         context.field_dimensions,
                     )
                     .as_transform(),
@@ -133,10 +133,10 @@ impl RoleAssignment {
 
             if let Some(game_controller_state) = context.filtered_game_controller_state {
                 if let Some(striker) = [
-                    PlayerNumber::Seven,
-                    PlayerNumber::Six,
-                    PlayerNumber::Five,
-                    PlayerNumber::Four,
+                    JerseyNumber::Seven,
+                    JerseyNumber::Six,
+                    JerseyNumber::Five,
+                    JerseyNumber::Four,
                 ]
                 .into_iter()
                 .find(|player| game_controller_state.penalties[*player].is_none())
@@ -144,7 +144,7 @@ impl RoleAssignment {
                     player_roles[striker] = Role::Striker;
                 }
             }
-            new_role = player_roles[*context.player_number];
+            new_role = player_roles[*context.jersey_number];
 
             self.role_initialized = true;
             self.last_received_spl_striker_message = Some(cycle_start_time);
@@ -189,7 +189,7 @@ impl RoleAssignment {
                     .write_to_network(OutgoingMessage::GameController(
                         *address,
                         GameControllerReturnMessage {
-                            player_number: *context.player_number,
+                            jersey_number: *context.jersey_number,
                             fallen: matches!(context.fall_state, FallState::Fallen { .. }),
                             pose: ground_to_field.as_pose(),
                             ball: seen_ball_to_game_controller_ball_position(
@@ -248,7 +248,7 @@ impl RoleAssignment {
                 team_ball,
                 cycle_start_time,
                 context.filtered_game_controller_state,
-                *context.player_number,
+                *context.jersey_number,
                 context.spl_network.striker_trusts_team_ball,
                 context.optional_roles,
             );
@@ -256,7 +256,7 @@ impl RoleAssignment {
             for spl_message in spl_messages {
                 self.last_received_spl_striker_message = Some(cycle_start_time);
                 let sender_position = ground_to_field.inverse() * spl_message.pose.position();
-                if spl_message.player_number != *context.player_number {
+                if spl_message.jersey_number != *context.jersey_number {
                     network_robot_obstacles.push(sender_position);
                 }
                 (new_role, send_spl_striker_message, team_ball) = process_role_state_machine(
@@ -270,20 +270,20 @@ impl RoleAssignment {
                     team_ball,
                     cycle_start_time,
                     context.filtered_game_controller_state,
-                    *context.player_number,
+                    *context.jersey_number,
                     context.spl_network.striker_trusts_team_ball,
                     context.optional_roles,
                 );
             }
         }
         if self.role == Role::ReplacementKeeper {
-            let previous_player = match context.player_number {
-                PlayerNumber::Three => PlayerNumber::Two,
-                PlayerNumber::Four => PlayerNumber::Three,
-                PlayerNumber::Five => PlayerNumber::Four,
-                PlayerNumber::Six => PlayerNumber::Five,
-                PlayerNumber::Seven => PlayerNumber::Six,
-                _ => PlayerNumber::One,
+            let previous_player = match context.jersey_number {
+                JerseyNumber::Three => JerseyNumber::Two,
+                JerseyNumber::Four => JerseyNumber::Three,
+                JerseyNumber::Five => JerseyNumber::Four,
+                JerseyNumber::Six => JerseyNumber::Five,
+                JerseyNumber::Seven => JerseyNumber::Six,
+                _ => JerseyNumber::One,
             };
             if let Some(last_time_player_penalized) =
                 self.last_time_player_was_penalized[previous_player]
@@ -322,7 +322,7 @@ impl RoleAssignment {
                     context
                         .hardware
                         .write_to_network(OutgoingMessage::Spl(HulkMessage {
-                            player_number: *context.player_number,
+                            jersey_number: *context.jersey_number,
                             pose: ground_to_field.as_pose(),
                             is_referee_ready_signal_detected: false,
                             ball_position,
@@ -344,7 +344,7 @@ impl RoleAssignment {
                 .last_time_player_was_penalized
                 .clone()
                 .iter()
-                .map(|(playernumber, ..)| playernumber)
+                .map(|(jerseynumber, ..)| jerseynumber)
             {
                 if game_controller_state.penalties[player].is_some() {
                     self.last_time_player_was_penalized[player] = Some(cycle_start_time);
@@ -372,7 +372,7 @@ fn process_role_state_machine(
     team_ball: Option<BallPosition<Field>>,
     cycle_start_time: SystemTime,
     filtered_game_controller_state: Option<&FilteredGameControllerState>,
-    player_number: PlayerNumber,
+    jersey_number: JerseyNumber,
     striker_trusts_team_ball: Duration,
     optional_roles: &[Role],
 ) -> (Role, bool, Option<BallPosition<Field>>) {
@@ -405,7 +405,7 @@ fn process_role_state_machine(
     }
 
     if let Some(message) = incoming_message {
-        if message.player_number == player_number {
+        if message.jersey_number == jersey_number {
             return (current_role, false, team_ball);
         }
     }
@@ -449,7 +449,7 @@ fn process_role_state_machine(
             _ => decide_if_claiming_striker_or_other_role(
                 spl_message,
                 time_to_reach_kick_position,
-                player_number,
+                jersey_number,
                 cycle_start_time,
                 filtered_game_controller_state,
                 optional_roles,
@@ -472,7 +472,7 @@ fn process_role_state_machine(
             _ => decide_if_claiming_striker_or_other_role(
                 spl_message,
                 time_to_reach_kick_position,
-                player_number,
+                jersey_number,
                 cycle_start_time,
                 filtered_game_controller_state,
                 optional_roles,
@@ -487,7 +487,7 @@ fn process_role_state_machine(
             _ => decide_if_claiming_striker_or_other_role(
                 spl_message,
                 time_to_reach_kick_position,
-                player_number,
+                jersey_number,
                 cycle_start_time,
                 filtered_game_controller_state,
                 optional_roles,
@@ -514,7 +514,7 @@ fn process_role_state_machine(
             _ => decide_if_claiming_striker_or_other_role(
                 spl_message,
                 time_to_reach_kick_position,
-                player_number,
+                jersey_number,
                 cycle_start_time,
                 filtered_game_controller_state,
                 optional_roles,
@@ -529,7 +529,7 @@ fn process_role_state_machine(
             _ => decide_if_claiming_striker_or_other_role(
                 spl_message,
                 time_to_reach_kick_position,
-                player_number,
+                jersey_number,
                 cycle_start_time,
                 filtered_game_controller_state,
                 optional_roles,
@@ -553,7 +553,7 @@ fn process_role_state_machine(
             _ => decide_if_claiming_striker_or_other_role(
                 spl_message,
                 time_to_reach_kick_position,
-                player_number,
+                jersey_number,
                 cycle_start_time,
                 filtered_game_controller_state,
                 optional_roles,
@@ -575,7 +575,7 @@ fn process_role_state_machine(
             _ => decide_if_claiming_striker_or_other_role(
                 spl_message,
                 time_to_reach_kick_position,
-                player_number,
+                jersey_number,
                 cycle_start_time,
                 filtered_game_controller_state,
                 optional_roles,
@@ -606,7 +606,7 @@ fn process_role_state_machine(
             _ => decide_if_claiming_striker_or_other_role(
                 spl_message,
                 time_to_reach_kick_position,
-                player_number,
+                jersey_number,
                 cycle_start_time,
                 filtered_game_controller_state,
                 optional_roles,
@@ -618,7 +618,7 @@ fn process_role_state_machine(
 fn decide_if_claiming_striker_or_other_role(
     spl_message: &HulkMessage,
     time_to_reach_kick_position: Option<Duration>,
-    player_number: PlayerNumber,
+    jersey_number: JerseyNumber,
     cycle_start_time: SystemTime,
     filtered_game_controller_state: Option<&FilteredGameControllerState>,
     optional_roles: &[Role],
@@ -632,9 +632,9 @@ fn decide_if_claiming_striker_or_other_role(
     } else {
         (
             generate_role(
-                player_number,
+                jersey_number,
                 filtered_game_controller_state,
-                spl_message.player_number,
+                spl_message.jersey_number,
                 optional_roles,
             ),
             false,
@@ -703,16 +703,16 @@ fn team_ball_from_seen_ball(
 }
 
 fn generate_role(
-    own_player_number: PlayerNumber,
+    own_jersey_number: JerseyNumber,
     game_controller_state: Option<&FilteredGameControllerState>,
-    striker_player_number: PlayerNumber,
+    striker_jersey_number: JerseyNumber,
     optional_roles: &[Role],
 ) -> Role {
     if let Some(state) = game_controller_state {
         pick_role_with_penalties(
-            own_player_number,
+            own_jersey_number,
             &state.penalties,
-            striker_player_number,
+            striker_jersey_number,
             optional_roles,
         )
     } else {
@@ -721,9 +721,9 @@ fn generate_role(
 }
 
 fn pick_role_with_penalties(
-    own_player_number: PlayerNumber,
+    own_jersey_number: JerseyNumber,
     penalties: &Players<Option<Penalty>>,
-    striker_player_number: PlayerNumber,
+    striker_jersey_number: JerseyNumber,
     optional_roles: &[Role],
 ) -> Role {
     let mut role_assignment: Players<Option<Role>> = Players {
@@ -736,7 +736,7 @@ fn pick_role_with_penalties(
         seven: None,
     };
 
-    role_assignment[striker_player_number] = Some(Role::Striker);
+    role_assignment[striker_jersey_number] = Some(Role::Striker);
     let mut unassigned_robots = 6;
 
     unassigned_robots -= penalties
@@ -750,30 +750,30 @@ fn pick_role_with_penalties(
     }
 
     for &optional_role in optional_roles.iter().take(unassigned_robots) {
-        if needs_assignment(PlayerNumber::Two, penalties, &role_assignment) {
-            role_assignment[PlayerNumber::Two] = Some(optional_role);
-        } else if needs_assignment(PlayerNumber::Three, penalties, &role_assignment) {
-            role_assignment[PlayerNumber::Three] = Some(optional_role);
-        } else if needs_assignment(PlayerNumber::Four, penalties, &role_assignment) {
-            role_assignment[PlayerNumber::Four] = Some(optional_role);
-        } else if needs_assignment(PlayerNumber::Five, penalties, &role_assignment) {
-            role_assignment[PlayerNumber::Five] = Some(optional_role);
-        } else if needs_assignment(PlayerNumber::Six, penalties, &role_assignment) {
-            role_assignment[PlayerNumber::Six] = Some(optional_role);
-        } else if needs_assignment(PlayerNumber::Seven, penalties, &role_assignment) {
-            role_assignment[PlayerNumber::Seven] = Some(optional_role);
+        if needs_assignment(JerseyNumber::Two, penalties, &role_assignment) {
+            role_assignment[JerseyNumber::Two] = Some(optional_role);
+        } else if needs_assignment(JerseyNumber::Three, penalties, &role_assignment) {
+            role_assignment[JerseyNumber::Three] = Some(optional_role);
+        } else if needs_assignment(JerseyNumber::Four, penalties, &role_assignment) {
+            role_assignment[JerseyNumber::Four] = Some(optional_role);
+        } else if needs_assignment(JerseyNumber::Five, penalties, &role_assignment) {
+            role_assignment[JerseyNumber::Five] = Some(optional_role);
+        } else if needs_assignment(JerseyNumber::Six, penalties, &role_assignment) {
+            role_assignment[JerseyNumber::Six] = Some(optional_role);
+        } else if needs_assignment(JerseyNumber::Seven, penalties, &role_assignment) {
+            role_assignment[JerseyNumber::Seven] = Some(optional_role);
         }
     }
 
-    role_assignment[own_player_number].unwrap_or_default()
+    role_assignment[own_jersey_number].unwrap_or_default()
 }
 
 fn needs_assignment(
-    player_number: PlayerNumber,
+    jersey_number: JerseyNumber,
     penalties: &Players<Option<Penalty>>,
     role_assignment: &Players<Option<Role>>,
 ) -> bool {
-    role_assignment[player_number].is_none() && penalties[player_number].is_none()
+    role_assignment[jersey_number].is_none() && penalties[jersey_number].is_none()
 }
 
 fn assign_keeper_or_replacement_keeper(
@@ -781,28 +781,28 @@ fn assign_keeper_or_replacement_keeper(
     penalties: &Players<Option<Penalty>>,
     role_assignment: &mut Players<Option<Role>>,
 ) -> usize {
-    if needs_assignment(PlayerNumber::One, penalties, role_assignment) {
-        role_assignment[PlayerNumber::One] = Some(Role::Keeper);
+    if needs_assignment(JerseyNumber::One, penalties, role_assignment) {
+        role_assignment[JerseyNumber::One] = Some(Role::Keeper);
         return unassigned_robots - 1;
     }
 
-    if needs_assignment(PlayerNumber::Two, penalties, role_assignment) {
-        role_assignment[PlayerNumber::Two] = Some(Role::ReplacementKeeper);
+    if needs_assignment(JerseyNumber::Two, penalties, role_assignment) {
+        role_assignment[JerseyNumber::Two] = Some(Role::ReplacementKeeper);
         return unassigned_robots - 1;
-    } else if needs_assignment(PlayerNumber::Three, penalties, role_assignment) {
-        role_assignment[PlayerNumber::Three] = Some(Role::ReplacementKeeper);
+    } else if needs_assignment(JerseyNumber::Three, penalties, role_assignment) {
+        role_assignment[JerseyNumber::Three] = Some(Role::ReplacementKeeper);
         return unassigned_robots - 1;
-    } else if needs_assignment(PlayerNumber::Four, penalties, role_assignment) {
-        role_assignment[PlayerNumber::Four] = Some(Role::ReplacementKeeper);
+    } else if needs_assignment(JerseyNumber::Four, penalties, role_assignment) {
+        role_assignment[JerseyNumber::Four] = Some(Role::ReplacementKeeper);
         return unassigned_robots - 1;
-    } else if needs_assignment(PlayerNumber::Five, penalties, role_assignment) {
-        role_assignment[PlayerNumber::Five] = Some(Role::ReplacementKeeper);
+    } else if needs_assignment(JerseyNumber::Five, penalties, role_assignment) {
+        role_assignment[JerseyNumber::Five] = Some(Role::ReplacementKeeper);
         return unassigned_robots - 1;
-    } else if needs_assignment(PlayerNumber::Six, penalties, role_assignment) {
-        role_assignment[PlayerNumber::Six] = Some(Role::ReplacementKeeper);
+    } else if needs_assignment(JerseyNumber::Six, penalties, role_assignment) {
+        role_assignment[JerseyNumber::Six] = Some(Role::ReplacementKeeper);
         return unassigned_robots - 1;
-    } else if needs_assignment(PlayerNumber::Seven, penalties, role_assignment) {
-        role_assignment[PlayerNumber::Seven] = Some(Role::ReplacementKeeper);
+    } else if needs_assignment(JerseyNumber::Seven, penalties, role_assignment) {
+        role_assignment[JerseyNumber::Seven] = Some(Role::ReplacementKeeper);
         return unassigned_robots - 1;
     }
 

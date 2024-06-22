@@ -9,7 +9,7 @@ use linear_algebra::{center, distance, Isometry2, Point2, Transform};
 use ordered_float::NotNan;
 use projection::{camera_matrices::CameraMatrices, camera_matrix::CameraMatrix, Projection};
 use serde::{Deserialize, Serialize};
-use spl_network_messages::PlayerNumber;
+use spl_network_messages::JerseyNumber;
 use types::{
     fall_state::FallState,
     pose_detection::{HumanPose, Keypoints, RefereePoseCandidate},
@@ -36,7 +36,7 @@ pub struct CycleContext {
         Input<Option<Point2<Field>>, "Control", "expected_referee_position?">,
     fall_state: Input<FallState, "Control", "fall_state">,
 
-    player_number: Parameter<PlayerNumber, "player_number">,
+    jersey_number: Parameter<JerseyNumber, "jersey_number">,
     keypoint_confidence_threshold:
         Parameter<f32, "object_detection.$cycler_instance.keypoint_confidence_threshold">,
     distance_to_referee_position_threshold:

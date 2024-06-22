@@ -4,12 +4,12 @@ use clap::{
 };
 use color_eyre::{eyre::WrapErr, Result};
 
-use argument_parsers::{parse_network, NaoAddressPlayerAssignment, NETWORK_POSSIBLE_VALUES};
+use argument_parsers::{parse_network, NaoAddressJerseyAssignment, NETWORK_POSSIBLE_VALUES};
 use nao::Network;
 use repository::Repository;
 
 use crate::{
-    player_number::{player_number, Arguments as PlayerNumberArguments},
+    jersey_number::{jersey_number, Arguments as JerseyNumberArguments},
     recording::{parse_key_value, recording, Arguments as RecordingArguments},
     upload::{upload, Arguments as UploadArguments},
     wireless::{wireless, Arguments as WirelessArguments},
@@ -51,7 +51,7 @@ pub struct Arguments {
     pub network: Network,
     /// The NAOs to upload to with player number assignments e.g. 20w:2 or 10.1.24.22:5 (player numbers start from 1)
     #[arg(required = true)]
-    pub assignments: Vec<NaoAddressPlayerAssignment>,
+    pub assignments: Vec<NaoAddressJerseyAssignment>,
     /// Use a remote machine for compilation, see ./scripts/remote for details
     #[arg(long)]
     pub remote: bool,
@@ -78,8 +78,8 @@ pub async fn pre_game(arguments: Arguments, repository: &Repository) -> Result<(
         .await
         .wrap_err_with(|| format!("failed setting location for nao to {}", arguments.location))?;
 
-    player_number(
-        PlayerNumberArguments {
+    jersey_number(
+        JerseyNumberArguments {
             assignments: arguments
                 .assignments
                 .iter()

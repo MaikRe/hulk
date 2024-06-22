@@ -2,7 +2,7 @@ use color_eyre::{eyre::Ok, Result};
 use context_attribute::context;
 use framework::MainOutput;
 use serde::{Deserialize, Serialize};
-use spl_network_messages::PlayerNumber;
+use spl_network_messages::JerseyNumber;
 use types::messages::IncomingMessage;
 
 #[derive(Deserialize, Serialize)]
@@ -14,7 +14,7 @@ pub struct CreationContext {}
 #[context]
 pub struct CycleContext {
     message: Input<IncomingMessage, "message">,
-    player_number: Parameter<PlayerNumber, "player_number">,
+    jersey_number: Parameter<JerseyNumber, "jersey_number">,
 }
 
 #[context]
@@ -32,7 +32,7 @@ impl MessageFilter {
             IncomingMessage::GameController(source_address, message) => Some(
                 IncomingMessage::GameController(*source_address, message.clone()),
             ),
-            IncomingMessage::Spl(message) if message.player_number != *context.player_number => {
+            IncomingMessage::Spl(message) if message.jersey_number != *context.jersey_number => {
                 Some(IncomingMessage::Spl(*message))
             }
             _ => None,

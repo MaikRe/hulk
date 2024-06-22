@@ -22,7 +22,7 @@ use crate::{
         GAMECONTROLLER_RETURN_STRUCT_VRC_GESTURE_SUBSTITUTION_RED_TEAM,
         GAMECONTROLLER_RETURN_STRUCT_VRC_VERSION,
     },
-    PlayerNumber, HULKS_TEAM_NUMBER,
+    JerseyNumber, HULKS_TEAM_NUMBER,
 };
 
 #[derive(
@@ -59,7 +59,7 @@ pub enum VisualRefereeDecision {
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
 pub struct VisualRefereeMessage {
-    pub player_number: PlayerNumber,
+    pub jersey_number: JerseyNumber,
     pub gesture: VisualRefereeDecision,
     pub whistle_age: Duration,
 }
@@ -88,15 +88,7 @@ impl From<VisualRefereeMessage> for RoboCupGameControlReturnData {
                 GAMECONTROLLER_RETURN_STRUCT_HEADER[3] as c_char,
             ],
             version: GAMECONTROLLER_RETURN_STRUCT_VRC_VERSION,
-            playerNum: match message.player_number {
-                PlayerNumber::One => 1,
-                PlayerNumber::Two => 2,
-                PlayerNumber::Three => 3,
-                PlayerNumber::Four => 4,
-                PlayerNumber::Five => 5,
-                PlayerNumber::Six => 6,
-                PlayerNumber::Seven => 7,
-            },
+            playerNum: message.jersey_number.number,
             teamNum: HULKS_TEAM_NUMBER,
             fallen: message.gesture as u8,
             pose: Default::default(),

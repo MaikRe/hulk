@@ -12,7 +12,7 @@ use coordinate_systems::{Field, Head};
 use geometry::line_segment::LineSegment;
 use linear_algebra::{vector, Isometry2, Orientation2, Point2, Rotation2, Vector2};
 use path_serde::{PathDeserialize, PathIntrospect, PathSerialize};
-use spl_network_messages::{GamePhase, GameState, HulkMessage, PlayerNumber, Team};
+use spl_network_messages::{GamePhase, GameState, HulkMessage, JerseyNumber, Team};
 use types::{
     ball_position::BallPosition,
     game_controller_state::GameControllerState,
@@ -42,9 +42,9 @@ pub struct Ball {
 pub struct State {
     pub time_elapsed: Duration,
     pub cycle_count: usize,
-    pub robots: HashMap<PlayerNumber, Robot>,
+    pub robots: HashMap<JerseyNumber, Robot>,
     pub ball: Option<Ball>,
-    pub messages: Vec<(PlayerNumber, HulkMessage)>,
+    pub messages: Vec<(JerseyNumber, HulkMessage)>,
     pub finished: bool,
     pub game_controller_state: GameControllerState,
 }
@@ -179,7 +179,7 @@ impl State {
     fn cycle_robots(&mut self, now: std::time::SystemTime) -> Result<()> {
         let messages_sent_last_cycle = take(&mut self.messages);
 
-        for (player_number, robot) in self.robots.iter_mut() {
+        for (jersey_number, robot) in self.robots.iter_mut() {
             robot.database.main_outputs.cycle_time.start_time = now;
 
             let ground_to_field = robot
@@ -228,7 +228,7 @@ impl State {
 
             for message in robot.interface.take_outgoing_messages() {
                 if let OutgoingMessage::Spl(message) = message {
-                    self.messages.push((*player_number, message));
+                    self.messages.push((*jersey_number, message));
                     self.game_controller_state.remaining_amount_of_messages -= 1
                 }
             }
@@ -270,11 +270,11 @@ impl State {
         self.ball = lua_state.ball;
         self.cycle_count = lua_state.cycle_count;
         for lua_robot in lua_state.robots {
-            let mut robot = Robot::try_new(lua_robot.parameters.player_number)
+            let mut robot = Robot::try_new(lua_robot.parameters.jersey_number)
                 .expect("Creating dummy robot should never fail");
             robot.database = lua_robot.database;
             robot.parameters = lua_robot.parameters;
-            self.robots.insert(robot.parameters.player_number, robot);
+            self.robots.insert(robot.parameters.jersey_number, robot);
         }
 
         self.finished = lua_state.finished;
@@ -325,7 +325,7 @@ pub struct LuaState {
     pub cycle_count: usize,
     pub robots: Vec<LuaRobot>,
     pub ball: Option<Ball>,
-    pub messages: Vec<(PlayerNumber, HulkMessage)>,
+    pub messages: Vec<(JerseyNumber, HulkMessage)>,
     pub finished: bool,
     pub game_controller_state: GameControllerState,
 }

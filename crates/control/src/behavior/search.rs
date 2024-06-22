@@ -145,7 +145,7 @@ fn assign_search_role(world_state: &WorldState) -> Option<SearchRole> {
     available_players
         .zip(search_roles)
         .find_map(|(number, position)| {
-            let is_my_player_number = number == world_state.robot.player_number;
-            is_my_player_number.then_some(position)
+            let is_my_jersey_number = number == world_state.robot.jersey_number;
+            is_my_jersey_number.then_some(position)
         })
 }

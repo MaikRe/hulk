@@ -16,7 +16,7 @@ use context_attribute::context;
 use coordinate_systems::{Field, Ground};
 use filtering::pose_filter::PoseFilter;
 use framework::{AdditionalOutput, HistoricInput, MainOutput, PerceptionInput};
-use spl_network_messages::{GamePhase, Penalty, PlayerNumber, Team};
+use spl_network_messages::{GamePhase, JerseyNumber, Penalty, Team};
 use types::{
     cycle_time::CycleTime,
     field_dimensions::FieldDimensions,
@@ -85,7 +85,7 @@ pub struct CycleContext {
         Parameter<usize, "localization.maximum_amount_of_outer_iterations">,
     minimum_fit_error: Parameter<f32, "localization.minimum_fit_error">,
     odometry_noise: Parameter<Vector3<f32>, "localization.odometry_noise">,
-    player_number: Parameter<PlayerNumber, "player_number">,
+    jersey_number: Parameter<JerseyNumber, "jersey_number">,
     penalized_distance: Parameter<f32, "localization.penalized_distance">,
     penalized_hypothesis_covariance:
         Parameter<Matrix3<f32>, "localization.penalized_hypothesis_covariance">,
@@ -141,7 +141,7 @@ impl Localization {
         match (self.last_primary_state, primary_state, game_phase) {
             (PrimaryState::Standby, PrimaryState::Ready, _) => {
                 let initial_pose = generate_initial_pose(
-                    &context.initial_poses[*context.player_number],
+                    &context.initial_poses[*context.jersey_number],
                     context.field_dimensions,
                 );
                 self.hypotheses = vec![ScoredPose::from_isometry(
@@ -524,7 +524,7 @@ impl Localization {
         let penalty = context
             .filtered_game_controller_state
             .and_then(|game_controller_state| {
-                game_controller_state.penalties[*context.player_number]
+                game_controller_state.penalties[*context.jersey_number]
             });
         let game_phase = context
             .filtered_game_controller_state
@@ -540,7 +540,7 @@ impl Localization {
         let ground_to_field = match primary_state {
             PrimaryState::Initial | PrimaryState::Standby => Some(
                 generate_initial_pose(
-                    &context.initial_poses[*context.player_number],
+                    &context.initial_poses[*context.jersey_number],
                     context.field_dimensions,
                 )
                 .as_transform(),

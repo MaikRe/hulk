@@ -8,7 +8,7 @@ use context_attribute::context;
 use framework::{AdditionalOutput, MainOutput, PerceptionInput};
 use hardware::NetworkInterface;
 use serde::{Deserialize, Serialize};
-use spl_network_messages::PlayerNumber;
+use spl_network_messages::JerseyNumber;
 use types::{
     cycle_time::CycleTime, fall_state::FallState, messages::IncomingMessage, players::Players,
     pose_kinds::PoseKind,
@@ -42,7 +42,7 @@ pub struct CycleContext {
         Parameter<Duration, "referee_pose_detection_filter.initial_message_grace_period">,
     minimum_above_head_arms_detections:
         Parameter<usize, "referee_pose_detection_filter.minimum_above_head_arms_detections">,
-    player_number: Parameter<PlayerNumber, "player_number">,
+    jersey_number: Parameter<JerseyNumber, "jersey_number">,
 
     player_referee_detection_times:
         AdditionalOutput<Players<Option<SystemTime>>, "player_referee_detection_times">,
@@ -124,7 +124,7 @@ impl RefereePoseDetectionFilter {
             .count();
 
         if detected_referee_pose_count >= *context.minimum_number_poses_before_message {
-            self.detection_times[*context.player_number] = Some(context.cycle_time.start_time);
+            self.detection_times[*context.jersey_number] = Some(context.cycle_time.start_time);
         }
 
         detected_referee_pose_count >= *context.minimum_number_poses_before_message

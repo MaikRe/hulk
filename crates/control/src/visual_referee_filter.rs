@@ -10,7 +10,7 @@ use color_eyre::{eyre::Context, Result};
 use context_attribute::context;
 use hardware::NetworkInterface;
 use serde::{Deserialize, Serialize};
-use spl_network_messages::{PlayerNumber, SubState, VisualRefereeDecision, VisualRefereeMessage};
+use spl_network_messages::{JerseyNumber, SubState, VisualRefereeDecision, VisualRefereeMessage};
 use types::{
     cycle_time::CycleTime, filtered_whistle::FilteredWhistle,
     game_controller_state::GameControllerState, messages::OutgoingMessage,
@@ -34,7 +34,7 @@ pub struct CycleContext {
     game_controller_address: Input<Option<SocketAddr>, "game_controller_address?">,
     cycle_time: Input<CycleTime, "cycle_time">,
     filtered_whistle: Input<FilteredWhistle, "filtered_whistle">,
-    player_number: Parameter<PlayerNumber, "player_number">,
+    jersey_number: Parameter<JerseyNumber, "jersey_number">,
 
     hardware: HardwareInterface,
 }
@@ -103,7 +103,7 @@ impl VisualRefereeFilter {
                 let message = OutgoingMessage::VisualReferee(
                     *address,
                     VisualRefereeMessage {
-                        player_number: *context.player_number,
+                        jersey_number: *context.jersey_number,
                         gesture,
                         whistle_age: duration_since_last_whistle,
                     },

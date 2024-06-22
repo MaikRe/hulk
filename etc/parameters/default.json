@@ -1318,7 +1318,9 @@
     "goal_post_diameter": 0.1,
     "goal_depth": 0.5
   },
-  "player_number": "Seven",
+  "jersey_number": {
+    "number" : 7
+  },
   "recorded_primary_states": ["Ready", "Set", "Playing"],
   "spl_network": {
     "game_controller_return_message_interval": {

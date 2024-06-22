@@ -10,12 +10,12 @@ use crate::{
         RoboCupGameControlReturnData, GAMECONTROLLER_RETURN_STRUCT_HEADER,
         GAMECONTROLLER_RETURN_STRUCT_VERSION,
     },
-    BallPosition, PlayerNumber, HULKS_TEAM_NUMBER,
+    BallPosition, JerseyNumber, HULKS_TEAM_NUMBER,
 };
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
 pub struct GameControllerReturnMessage {
-    pub player_number: PlayerNumber,
+    pub jersey_number: JerseyNumber,
     pub fallen: bool,
     pub pose: Pose2<Field>,
     pub ball: Option<BallPosition<Ground>>,
@@ -51,15 +51,8 @@ impl TryFrom<RoboCupGameControlReturnData> for GameControllerReturnMessage {
             bail!("unexpected team number != {}", HULKS_TEAM_NUMBER);
         }
         Ok(Self {
-            player_number: match message.playerNum {
-                1 => PlayerNumber::One,
-                2 => PlayerNumber::Two,
-                3 => PlayerNumber::Three,
-                4 => PlayerNumber::Four,
-                5 => PlayerNumber::Five,
-                6 => PlayerNumber::Six,
-                7 => PlayerNumber::Seven,
-                _ => bail!("unexpected player number {}", message.playerNum),
+            jersey_number: JerseyNumber {
+                number: message.playerNum,
             },
             fallen: match message.fallen {
                 1 => true,
@@ -115,15 +108,7 @@ impl From<GameControllerReturnMessage> for RoboCupGameControlReturnData {
                 GAMECONTROLLER_RETURN_STRUCT_HEADER[3] as c_char,
             ],
             version: GAMECONTROLLER_RETURN_STRUCT_VERSION,
-            playerNum: match message.player_number {
-                PlayerNumber::One => 1,
-                PlayerNumber::Two => 2,
-                PlayerNumber::Three => 3,
-                PlayerNumber::Four => 4,
-                PlayerNumber::Five => 5,
-                PlayerNumber::Six => 6,
-                PlayerNumber::Seven => 7,
-            },
+            playerNum: message.jersey_number.number,
             teamNum: HULKS_TEAM_NUMBER,
             fallen: u8::from(message.fallen),
             pose: [
@@ -148,7 +133,7 @@ mod test {
     #[test]
     fn zero_isometry() {
         let input_message = GameControllerReturnMessage {
-            player_number: PlayerNumber::One,
+            jersey_number: JerseyNumber { number: 1 },
             fallen: false,
             pose: Pose2::default(),
             ball: None,
@@ -167,7 +152,7 @@ mod test {
     #[test]
     fn one_to_the_left_isometry() {
         let input_message = GameControllerReturnMessage {
-            player_number: PlayerNumber::One,
+            jersey_number: JerseyNumber { number: 1 },
             fallen: false,
             pose: Pose2::new(vector![0.0, 1.0], FRAC_PI_2),
             ball: None,
@@ -190,7 +175,7 @@ mod test {
     #[test]
     fn one_schräg_to_the_top_right_isometry() {
         let input_message = GameControllerReturnMessage {
-            player_number: PlayerNumber::One,
+            jersey_number: JerseyNumber { number: 1 },
             fallen: false,
             pose: Pose2::new(vector![1.0, 1.0], FRAC_PI_4),
             ball: None,

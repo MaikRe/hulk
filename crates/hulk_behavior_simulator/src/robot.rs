@@ -12,7 +12,7 @@ use framework::{future_queue, Producer, RecordingTrigger};
 use linear_algebra::vector;
 use parameters::directory::deserialize;
 use projection::camera_matrix::CameraMatrix;
-use spl_network_messages::{HulkMessage, PlayerNumber};
+use spl_network_messages::{HulkMessage, JerseyNumber};
 use types::{messages::IncomingMessage, motion_selection::MotionSafeExits};
 
 use crate::{
@@ -35,20 +35,20 @@ pub struct Robot {
 }
 
 impl Robot {
-    pub fn try_new(player_number: PlayerNumber) -> Result<Self> {
+    pub fn try_new(jersey_number: JerseyNumber) -> Result<Self> {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .build()
             .unwrap();
         let mut parameter: Parameters = runtime.block_on(async {
             deserialize(
                 "etc/parameters",
-                &format!("behavior_simulator.{}", from_player_number(player_number)),
-                &format!("behavior_simulator.{}", from_player_number(player_number)),
+                &format!("behavior_simulator.{}", from_jersey_number(jersey_number)),
+                &format!("behavior_simulator.{}", from_jersey_number(jersey_number)),
             )
             .await
             .wrap_err("could not load initial parameters")
         })?;
-        parameter.player_number = player_number;
+        parameter.jersey_number = jersey_number;
 
         let interface: Arc<_> = Interfake::default().into();
 
@@ -77,7 +77,7 @@ impl Robot {
 
         database.main_outputs.ground_to_field = Some(
             generate_initial_pose(
-                &parameter.localization.initial_poses[player_number],
+                &parameter.localization.initial_poses[jersey_number],
                 &parameter.field_dimensions,
             )
             .as_transform(),
@@ -102,9 +102,9 @@ impl Robot {
         })
     }
 
-    pub fn cycle(&mut self, messages: &[(PlayerNumber, HulkMessage)]) -> Result<()> {
+    pub fn cycle(&mut self, messages: &[(JerseyNumber, HulkMessage)]) -> Result<()> {
         for (source, hulks_message) in messages.iter() {
-            let source_is_other = *source != self.parameters.player_number;
+            let source_is_other = *source != self.parameters.jersey_number;
             let message = IncomingMessage::Spl(*hulks_message);
             self.spl_network_sender.announce();
             self.spl_network_sender
@@ -140,29 +140,29 @@ impl Robot {
     }
 }
 
-pub fn to_player_number(value: usize) -> Result<PlayerNumber, String> {
+pub fn to_jersey_number(value: usize) -> Result<JerseyNumber, String> {
     let number = match value {
-        1 => PlayerNumber::One,
-        2 => PlayerNumber::Two,
-        3 => PlayerNumber::Three,
-        4 => PlayerNumber::Four,
-        5 => PlayerNumber::Five,
-        6 => PlayerNumber::Six,
-        7 => PlayerNumber::Seven,
+        1 => JerseyNumber::One,
+        2 => JerseyNumber::Two,
+        3 => JerseyNumber::Three,
+        4 => JerseyNumber::Four,
+        5 => JerseyNumber::Five,
+        6 => JerseyNumber::Six,
+        7 => JerseyNumber::Seven,
         number => return Err(format!("invalid player number: {number}")),
     };
 
     Ok(number)
 }
 
-pub fn from_player_number(val: PlayerNumber) -> usize {
+pub fn from_jersey_number(val: JerseyNumber) -> usize {
     match val {
-        PlayerNumber::One => 1,
-        PlayerNumber::Two => 2,
-        PlayerNumber::Three => 3,
-        PlayerNumber::Four => 4,
-        PlayerNumber::Five => 5,
-        PlayerNumber::Six => 6,
-        PlayerNumber::Seven => 7,
+        JerseyNumber::One => 1,
+        JerseyNumber::Two => 2,
+        JerseyNumber::Three => 3,
+        JerseyNumber::Four => 4,
+        JerseyNumber::Five => 5,
+        JerseyNumber::Six => 6,
+        JerseyNumber::Seven => 7,
     }
 }

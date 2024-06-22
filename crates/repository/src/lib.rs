@@ -36,7 +36,7 @@ use tokio::{
     process::Command,
 };
 
-use spl_network_messages::PlayerNumber;
+use spl_network_messages::JerseyNumber;
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -253,15 +253,15 @@ impl Repository {
         Ok(())
     }
 
-    pub async fn set_player_number(
+    pub async fn set_jersey_number(
         &self,
         head_id: &str,
-        player_number: PlayerNumber,
+        jersey_number: JerseyNumber,
     ) -> Result<()> {
-        let path = "player_number";
+        let path = "jersey_number";
         let parameters = nest_value_at_path(
             path,
-            to_value(player_number).wrap_err("failed to serialize player number")?,
+            to_value(jersey_number).wrap_err("failed to serialize player number")?,
         );
         serialize(
             &parameters,

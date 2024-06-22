@@ -4,7 +4,7 @@ use coordinate_systems::{Field, Ground};
 use framework::MainOutput;
 use linear_algebra::{Isometry2, Point2};
 use serde::{Deserialize, Serialize};
-use spl_network_messages::PlayerNumber;
+use spl_network_messages::JerseyNumber;
 use types::{
     ball_position::HypotheticalBallPosition,
     fall_state::FallState,
@@ -36,7 +36,7 @@ pub struct CycleContext {
     kick_decisions: Input<Option<Vec<KickDecision>>, "kick_decisions?">,
     instant_kick_decisions: Input<Option<Vec<KickDecision>>, "instant_kick_decisions?">,
 
-    player_number: Parameter<PlayerNumber, "player_number">,
+    jersey_number: Parameter<JerseyNumber, "jersey_number">,
 
     fall_state: Input<FallState, "fall_state">,
     has_ground_contact: Input<bool, "has_ground_contact">,
@@ -65,7 +65,7 @@ impl WorldStateComposer {
             primary_state: *context.primary_state,
             fall_state: *context.fall_state,
             has_ground_contact: *context.has_ground_contact,
-            player_number: *context.player_number,
+            jersey_number: *context.jersey_number,
         };
 
         let world_state = WorldState {

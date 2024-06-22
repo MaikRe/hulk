@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     cyclers::control::Database,
-    robot::to_player_number,
+    robot::to_jersey_number,
     simulator::{Frame, Simulator},
     state::Ball,
 };
@@ -68,10 +68,10 @@ async fn timeline_server(
 
         {
             let mut control = control_writer.borrow_mut();
-            *control = to_player_number(parameters.selected_robot)
+            *control = to_jersey_number(parameters.selected_robot)
                 .ok()
-                .and_then(|player_number| {
-                    frames[parameters.selected_frame].robots[player_number].clone()
+                .and_then(|jersey_number| {
+                    frames[parameters.selected_frame].robots[jersey_number].clone()
                 })
                 .unwrap_or_default();
         }

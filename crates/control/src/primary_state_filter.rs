@@ -5,7 +5,7 @@ use context_attribute::context;
 use framework::MainOutput;
 use hardware::{RecordingInterface, SpeakerInterface};
 use serde::{Deserialize, Serialize};
-use spl_network_messages::PlayerNumber;
+use spl_network_messages::JerseyNumber;
 use types::{
     audio::{Sound, SpeakerRequest},
     buttons::Buttons,
@@ -28,7 +28,7 @@ pub struct CycleContext {
     filtered_game_controller_state:
         Input<Option<FilteredGameControllerState>, "filtered_game_controller_state?">,
 
-    player_number: Parameter<PlayerNumber, "player_number">,
+    jersey_number: Parameter<JerseyNumber, "jersey_number">,
     recorded_primary_states: Parameter<HashSet<PrimaryState>, "recorded_primary_states">,
 
     hardware_interface: HardwareInterface,
@@ -53,7 +53,7 @@ impl PrimaryStateFilter {
     ) -> Result<MainOutputs> {
         let is_penalized = match context.filtered_game_controller_state {
             Some(game_controller_state) => {
-                game_controller_state.penalties[*context.player_number].is_some()
+                game_controller_state.penalties[*context.jersey_number].is_some()
             }
             None => false,
         };

@@ -5,9 +5,11 @@ mod visual_referee_message;
 
 use std::{
     fmt::{self, Display, Formatter},
+    str::FromStr,
     time::Duration,
 };
 
+use color_eyre::{eyre::WrapErr, Report, Result};
 use coordinate_systems::Field;
 use linear_algebra::{Point2, Pose2};
 use path_serde::{PathDeserialize, PathIntrospect, PathSerialize};
@@ -22,7 +24,7 @@ pub use visual_referee_message::{VisualRefereeDecision, VisualRefereeMessage};
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
 pub struct HulkMessage {
-    pub player_number: PlayerNumber,
+    pub jersey_number: JerseyNumber,
     pub pose: Pose2<Field>,
     pub is_referee_ready_signal_detected: bool,
     pub ball_position: Option<BallPosition<Field>>,
@@ -51,7 +53,6 @@ pub const HULKS_TEAM_NUMBER: u8 = 24;
     Clone,
     Copy,
     Debug,
-    Default,
     Deserialize,
     Eq,
     Hash,
@@ -61,30 +62,28 @@ pub const HULKS_TEAM_NUMBER: u8 = 24;
     PathSerialize,
     Serialize,
 )]
-pub enum PlayerNumber {
-    One,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
-    #[default]
-    Seven,
+pub struct JerseyNumber {
+    pub number: u8,
+}
+impl Default for JerseyNumber {
+    fn default() -> Self {
+        JerseyNumber { number: 7 }
+    }
 }
 
-impl Display for PlayerNumber {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
-        let number = match self {
-            PlayerNumber::One => "1",
-            PlayerNumber::Two => "2",
-            PlayerNumber::Three => "3",
-            PlayerNumber::Four => "4",
-            PlayerNumber::Five => "5",
-            PlayerNumber::Six => "6",
-            PlayerNumber::Seven => "7",
-        };
+impl FromStr for JerseyNumber {
+    type Err = Report;
 
-        write!(formatter, "{number}")
+    fn from_str(input: &str) -> Result<Self> {
+        Ok(Self {
+            number: input.parse().wrap_err("failed to parse JerseyNumber")?,
+        })
+    }
+}
+
+impl Display for JerseyNumber {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+        self.number.fmt(formatter)
     }
 }
 
@@ -94,12 +93,12 @@ mod tests {
 
     use linear_algebra::{Point, Pose2};
 
-    use crate::{BallPosition, HulkMessage, PlayerNumber};
+    use crate::{BallPosition, HulkMessage, JerseyNumber};
 
     #[test]
     fn maximum_hulk_message_size() {
         let test_message = HulkMessage {
-            player_number: PlayerNumber::Seven,
+            jersey_number: JerseyNumber { number: 18 },
             pose: Pose2::default(),
             is_referee_ready_signal_detected: false,
             ball_position: Some(BallPosition {

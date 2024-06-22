@@ -13,7 +13,7 @@ use types::{obstacles::Obstacle, players::Players};
 
 use crate::{
     cyclers::control::Database,
-    robot::{to_player_number, Robot},
+    robot::{to_jersey_number, Robot},
     state::{Ball, Event, LuaRobot, State},
 };
 
@@ -44,9 +44,9 @@ impl Simulator {
         lua.globals().set("print", print)?;
 
         let create_robot = lua
-            .create_function(|lua, player_number: usize| {
-                let player_number = to_player_number(player_number).map_err(LuaError::external)?;
-                let robot = Robot::try_new(player_number).map_err(LuaError::external)?;
+            .create_function(|lua, jersey_number: usize| {
+                let jersey_number = to_jersey_number(jersey_number).map_err(LuaError::external)?;
+                let robot = Robot::try_new(jersey_number).map_err(LuaError::external)?;
                 Ok(lua.to_value(&LuaRobot::new(&robot)))
             })
             .wrap_err("failed to create function `create_robot`")?;
@@ -95,8 +95,8 @@ impl Simulator {
 
             let state = self.state.lock();
             let mut robots = Players::<Option<Database>>::default();
-            for (player_number, robot) in &state.robots {
-                robots[*player_number] = Some(robot.database.clone())
+            for (jersey_number, robot) in &state.robots {
+                robots[*jersey_number] = Some(robot.database.clone())
             }
             self.frames.push(Frame {
                 robots,
@@ -122,13 +122,13 @@ impl Simulator {
         self.lua.scope(|scope| {
             self.lua.globals().set(
                 "penalize",
-                scope.create_function(|_, player_number: usize| {
-                    let player_number =
-                        to_player_number(player_number).map_err(LuaError::external)?;
+                scope.create_function(|_, jersey_number: usize| {
+                    let jersey_number =
+                        to_jersey_number(jersey_number).map_err(LuaError::external)?;
                     self.state
                         .lock()
                         .robots
-                        .get_mut(&player_number)
+                        .get_mut(&jersey_number)
                         .unwrap()
                         .is_penalized = true;
 
@@ -137,13 +137,13 @@ impl Simulator {
             )?;
             self.lua.globals().set(
                 "unpenalize",
-                scope.create_function(|_, player_number: usize| {
-                    let player_number =
-                        to_player_number(player_number).map_err(LuaError::external)?;
+                scope.create_function(|_, jersey_number: usize| {
+                    let jersey_number =
+                        to_jersey_number(jersey_number).map_err(LuaError::external)?;
                     self.state
                         .lock()
                         .robots
-                        .get_mut(&player_number)
+                        .get_mut(&jersey_number)
                         .unwrap()
                         .is_penalized = false;
 
@@ -154,15 +154,15 @@ impl Simulator {
             self.lua.globals().set(
                 "set_robot_pose",
                 scope.create_function(
-                    |lua, (player_number, position, angle): (usize, Value, f32)| {
-                        let player_number =
-                            to_player_number(player_number).map_err(LuaError::external)?;
+                    |lua, (jersey_number, position, angle): (usize, Value, f32)| {
+                        let jersey_number =
+                            to_jersey_number(jersey_number).map_err(LuaError::external)?;
                         let position: Vector2<Field> = lua.from_value(position)?;
 
                         self.state
                             .lock()
                             .robots
-                            .get_mut(&player_number)
+                            .get_mut(&jersey_number)
                             .unwrap()
                             .database
                             .main_outputs
@@ -176,16 +176,16 @@ impl Simulator {
             self.lua.globals().set(
                 "create_obstacle",
                 scope.create_function(
-                    |lua, (player_number, position, radius): (usize, Value, f32)| {
-                        let player_number =
-                            to_player_number(player_number).map_err(LuaError::external)?;
+                    |lua, (jersey_number, position, radius): (usize, Value, f32)| {
+                        let jersey_number =
+                            to_jersey_number(jersey_number).map_err(LuaError::external)?;
                         let position: Point2<Field> = lua.from_value(position)?;
 
                         let ground_to_field = self
                             .state
                             .lock()
                             .robots
-                            .get(&player_number)
+                            .get(&jersey_number)
                             .unwrap()
                             .database
                             .main_outputs
@@ -195,7 +195,7 @@ impl Simulator {
                         self.state
                             .lock()
                             .robots
-                            .get_mut(&player_number)
+                            .get_mut(&jersey_number)
                             .unwrap()
                             .database
                             .main_outputs
@@ -213,14 +213,14 @@ impl Simulator {
 
             self.lua.globals().set(
                 "clear_obstacles",
-                scope.create_function(|_, player_number: usize| {
-                    let player_number =
-                        to_player_number(player_number).map_err(LuaError::external)?;
+                scope.create_function(|_, jersey_number: usize| {
+                    let jersey_number =
+                        to_jersey_number(jersey_number).map_err(LuaError::external)?;
 
                     self.state
                         .lock()
                         .robots
-                        .get_mut(&player_number)
+                        .get_mut(&jersey_number)
                         .unwrap()
                         .database
                         .main_outputs

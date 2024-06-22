@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use coordinate_systems::{Field, Ground};
 use linear_algebra::{Isometry2, Point2, Vector2};
 use path_serde::{PathDeserialize, PathIntrospect, PathSerialize};
-use spl_network_messages::PlayerNumber;
+use spl_network_messages::JerseyNumber;
 
 use crate::{
     ball_position::HypotheticalBallPosition, fall_state::FallState,
@@ -76,5 +76,5 @@ pub struct RobotState {
     pub primary_state: PrimaryState,
     pub fall_state: FallState,
     pub has_ground_contact: bool,
-    pub player_number: PlayerNumber,
+    pub jersey_number: JerseyNumber,
 }

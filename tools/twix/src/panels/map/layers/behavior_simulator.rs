@@ -61,7 +61,7 @@ impl Layer<Field> for BehaviorSimulator {
         painter: &TwixPainter<Field>,
         _field_dimensions: &FieldDimensions,
     ) -> Result<()> {
-        for (player_number, value_buffer) in self.ground_to_field.0.iter() {
+        for (jersey_number, value_buffer) in self.ground_to_field.0.iter() {
             let Ok(ground_to_field): Result<Isometry2<Ground, Field>> = value_buffer.parse_latest()
             else {
                 continue;
@@ -74,13 +74,13 @@ impl Layer<Field> for BehaviorSimulator {
             };
 
             if let Ok(MotionCommand::Walk { path, .. }) =
-                self.motion_command.0[player_number].parse_latest()
+                self.motion_command.0[jersey_number].parse_latest()
             {
                 let ground_painter = painter.transform_painter(ground_to_field.inverse());
                 ground_painter.path(path, TRANSPARENT_BLUE, TRANSPARENT_LIGHT_BLUE, 0.025);
             }
 
-            if let Ok(head_yaw) = self.head_yaw.0[player_number].parse_latest::<f32>() {
+            if let Ok(head_yaw) = self.head_yaw.0[jersey_number].parse_latest::<f32>() {
                 let fov_stroke = Stroke {
                     width: 0.002,
                     color: Color32::YELLOW,
